@@ -1,0 +1,2200 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Molekyle- og atomviser</title>
+<style>
+:root{
+  --bg:#0b1020; --panel:#121a30; --panel2:#18223d; --line:#2a3658; --text:#e6ebf5; --muted:#93a0bd;
+  --accent:#5cc8ff; --accent2:#ffb347; --good:#7ee787; --bad:#ff7b72;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px}
+#app{display:flex;height:100vh;width:100vw;overflow:hidden}
+#viewWrap{position:relative;flex:1;min-width:0;background:radial-gradient(ellipse at 50% 40%,#16203d 0%,#0b1020 70%)}
+#view{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#view.drag{cursor:grabbing}
+#side{width:400px;max-width:100%;overflow-y:auto;background:var(--panel);border-left:1px solid var(--line);padding:12px 14px 40px}
+#focusBar{position:sticky;top:-12px;z-index:5;margin:0 -14px 8px;padding:8px 14px;background:rgba(18,26,48,.97);border-bottom:1px solid var(--line);backdrop-filter:blur(4px);cursor:pointer}
+#focusBar .fsym{font-size:24px;font-weight:800;line-height:1;margin-right:8px}
+#focusBar .fval{color:#ffd54a;font-weight:700}
+#focusBar:empty{display:none}
+h1{font-size:17px;margin:2px 0 10px;letter-spacing:.2px}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);margin:16px 0 6px;font-weight:600}
+.row{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+input[type=text]{flex:1;min-width:120px;background:#0d1428;border:1px solid var(--line);color:var(--text);padding:9px 10px;border-radius:8px;font-size:15px}
+input[type=text]:focus{outline:2px solid var(--accent);border-color:transparent}
+select,button{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font-size:13px;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.primary{background:#1d6fa5;border-color:#2b8fd0;font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
+.chip{padding:3px 8px;border-radius:12px;font-size:12px;background:#1a2647;border:1px solid #2b3a66;cursor:pointer;user-select:none}
+.chip:hover{border-color:var(--accent)}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:8px}
+.big{font-size:20px;font-weight:700}
+.shape{font-size:18px;font-weight:700;color:var(--accent2)}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+.err{color:var(--bad)}
+.note{color:#c9b98a;font-size:12px;margin-top:6px}
+table.kv{width:100%;border-collapse:collapse;font-size:13px}
+table.kv td{padding:3px 0;vertical-align:top}
+table.kv td:first-child{color:var(--muted);width:42%;padding-right:8px}
+.center{border-top:1px solid var(--line);padding-top:7px;margin-top:7px}
+.center:first-child{border-top:none;margin-top:0;padding-top:0}
+#lewis{width:100%;height:300px;background:#0d1428;border:1px solid var(--line);border-radius:10px;display:block}
+.opts label{display:flex;align-items:center;gap:6px;margin:3px 0;cursor:pointer}
+.slider{display:grid;grid-template-columns:70px 1fr 38px;align-items:center;gap:6px;margin:3px 0}
+.slider input{width:100%}
+#toolbar{position:absolute;left:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:3}
+#toolbar .grp{display:flex;gap:4px;background:rgba(18,26,48,.85);padding:5px;border-radius:9px;border:1px solid var(--line);align-items:center}
+#toolbar button{padding:5px 8px;min-width:34px;font-size:12px}
+#toolbar .lab{font-size:11px;color:var(--muted);width:14px;text-align:center}
+#atomBar{position:absolute;left:50%;transform:translateX(-50%);top:10px;z-index:4;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:calc(100% - 120px)}
+#atomBar .grp{display:flex;gap:4px;background:rgba(18,26,48,.92);padding:5px;border-radius:9px;border:1px solid var(--line);align-items:center}
+#atomBar button{padding:5px 9px;font-size:12px}
+#atomBar button.on{background:#1d6fa5;border-color:#5cc8ff}
+.valtag{font-size:10px;background:#5a4500;color:#ffd54a;border-radius:4px;padding:0 4px;margin-left:3px}
+#hud{position:absolute;left:10px;bottom:10px;background:rgba(18,26,48,.85);border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12px;max-width:calc(100% - 20px);pointer-events:none;z-index:3}
+#hud b{color:var(--accent)}
+#title3d{position:absolute;right:12px;top:10px;text-align:right;pointer-events:none;z-index:3;text-shadow:0 1px 4px #000}
+#title3d .t1{font-size:22px;font-weight:700}
+#title3d .t2{font-size:15px;color:var(--accent2);font-weight:600}
+#title3d .t3{font-size:12px;color:var(--muted)}
+.orbTable{width:100%;border-collapse:collapse;margin-top:6px}
+.orbTable td{padding:2px 3px;vertical-align:middle}
+.orbTable tr.sub:hover{background:#1f2c50}
+.orbTable tr.off td{opacity:.4}
+.sublab{font-weight:700;width:34px;cursor:pointer}
+.boxes{display:flex;gap:2px;flex-wrap:wrap}
+.box{width:26px;height:24px;border:1px solid #6d7fb0;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:15px;line-height:1;cursor:pointer;background:#0d1428}
+.box:hover{border-color:#fff}
+.box.solo{background:#28406f;border-color:var(--accent)}
+.econf{font-family:ui-monospace,Consolas,monospace;font-size:13px;line-height:1.6;word-break:break-word}
+.legend{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;margin-top:6px}
+.legend span i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:-1px}
+kbd{background:#0d1428;border:1px solid var(--line);border-radius:4px;padding:0 4px;font-size:11px}
+@media (max-width:900px){
+  #app{flex-direction:column;height:auto;min-height:100vh;overflow:visible}
+  #viewWrap{height:62vh;flex:none}
+  #side{width:100%;border-left:none;border-top:1px solid var(--line)}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="viewWrap">
+    <canvas id="view"></canvas>
+    <div id="toolbar">
+      <div class="grp"><span class="lab">X</span><button data-rot="x,-1" title="Roter om X-aksen">⟲</button><button data-rot="x,1" title="Roter om X-aksen">⟳</button></div>
+      <div class="grp"><span class="lab">Y</span><button data-rot="y,-1" title="Roter om Y-aksen">⟲</button><button data-rot="y,1" title="Roter om Y-aksen">⟳</button></div>
+      <div class="grp"><span class="lab">Z</span><button data-rot="z,-1" title="Roter om Z-aksen">⟲</button><button data-rot="z,1" title="Roter om Z-aksen">⟳</button></div>
+      <div class="grp"><button id="zIn" title="Zoom ind">＋</button><button id="zOut" title="Zoom ud">－</button><button id="zReset" title="Nulstil visning">⌂</button></div>
+      <div class="grp"><button id="zAtom" title="Zoom ind på valgt atom (orbitaler)">⚛ atom</button><button id="zNuc" title="Zoom helt ind til atomkernen">● kerne</button></div>
+    </div>
+    <div id="atomBar" style="display:none">
+      <div class="grp"><button data-am="lobes" title="Orbitalernes form (lærebogsfigurer)">🫧 Orbitalformer</button><button data-am="shells" title="Skalmodel: elektroner pr. skal">◎ Skalmodel</button><button data-am="cloud" title="Sandsynlighedssky |ψ|²">☁ Sky |ψ|²</button></div>
+      <div class="grp"><button id="ovBtn" title="Vis hele atomet med alle orbitaler">⊙ Overblik</button><button id="nucBtn" title="Zoom ind til atomkernen">● Kerne</button></div>
+      <div class="grp" id="backGrp"><button id="backMol" title="Tilbage til hele molekylet (Esc)">⟵ Molekyle</button></div>
+      <div class="grp"><button data-af="val" title="Vis kun valensorbitaler">Valens</button><button data-af="all" title="Vis alle besatte orbitaler">Alle</button><button id="prevOrb" title="Forrige orbital">◀</button><span id="orbName" class="small" style="min-width:92px;text-align:center"></span><button id="nextOrb" title="Næste orbital">▶</button></div>
+    </div>
+    <div id="title3d"><div class="t1" id="t1"></div><div class="t2" id="t2"></div><div class="t3" id="t3"></div></div>
+    <div id="hud"></div>
+  </div>
+  <aside id="side">
+    <div id="focusBar" title="Klik for at se alle detaljer om atomet i fokus"></div>
+    <h1>⚛ Molekyle- og atomviser</h1>
+    <div class="row">
+      <input type="text" id="inp" list="dl" placeholder="Fx H2O, CH4, SF6, SO4 2-, ethanol, CCO" value="H2O" autocomplete="off" spellcheck="false">
+      <button class="primary" id="go">Vis</button>
+    </div>
+    <datalist id="dl"></datalist>
+    <div class="row" style="margin-top:6px">
+      <span class="muted small">Input-type:</span>
+      <select id="mode"><option value="auto">Automatisk</option><option value="formula">Kemisk formel</option><option value="smiles">SMILES</option><option value="name">Navn</option></select>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div id="msg" class="small" style="margin-top:6px"></div>
+
+    <h2>Atom i fokus</h2>
+    <div class="card" id="atomPanel"><span class="muted">Klik på et atom, eller zoom ind på det (scroll / knib), for at se orbitaler, elektroner og atomkernen.</span></div>
+
+    <h2>Molekyle</h2>
+    <div class="card" id="info"></div>
+
+    <h2>Lewis-struktur</h2>
+    <canvas id="lewis"></canvas>
+    <div class="small muted" style="margin-top:4px">Streger = elektronpar i bindinger · prikpar = frie elektronpar · ⊕/⊖ = formelle ladninger</div>
+
+    <h2>Visning</h2>
+    <div class="card opts">
+      <div class="row"><span class="muted small">Model:</span>
+        <select id="style"><option value="bs">Kugle-og-pind</option><option value="sf">Kalotmodel (rumfyldende)</option><option value="st">Pinde</option></select>
+      </div>
+      <label><input type="checkbox" id="oAngles" checked> Vis bindingsvinkler</label>
+      <label><input type="checkbox" id="oLengths"> Vis bindingslængder (Å)</label>
+      <label><input type="checkbox" id="oLP" checked> Vis frie elektronpar i 3D</label>
+      <label><input type="checkbox" id="oLabels" checked> Vis atomsymboler</label>
+      <label><input type="checkbox" id="oAxes" checked> Vis akser (x, y, z)</label>
+      <label><input type="checkbox" id="oOrbLabels" checked> Vis orbitalnavne (atomvisning)</label>
+      <label><input type="checkbox" id="oElectrons" checked> Vis elektroner (atomvisning)</label>
+      <div class="row" style="margin-top:4px"><span class="muted small">Orbitalfarver:</span>
+        <select id="orbColor"><option value="each">Hver orbital sin farve (pₓ rød, p_y grøn, p_z blå …)</option><option value="type">Efter type (s/p/d/f)</option><option value="phase">Efter fase (+/−)</option></select>
+      </div>
+      <div style="margin-top:8px" class="muted small">Automatisk rotation (grader/s):</div>
+      <div class="slider"><span>X-akse</span><input type="range" id="arX" min="-90" max="90" value="0"><span id="arXv">0</span></div>
+      <div class="slider"><span>Y-akse</span><input type="range" id="arY" min="-90" max="90" value="12"><span id="arYv">12</span></div>
+      <div class="slider"><span>Z-akse</span><input type="range" id="arZ" min="-90" max="90" value="0"><span id="arZv">0</span></div>
+      <div class="row" style="margin-top:6px"><button id="stopRot">Stop rotation</button></div>
+    </div>
+
+    <h2>Hjælp</h2>
+    <div class="card small">
+      <b>Mus:</b> træk = roter (X/Y) · <kbd>Shift</kbd>+træk eller højreklik-træk = roter om Z · scroll = zoom (mod atomet under musen) · <kbd>Ctrl</kbd>+træk = flyt · klik = vælg atom · dobbeltklik = zoom ind på atom.<br>
+      <b>Touch:</b> én finger = roter · to fingre = zoom/flyt.<br>
+      <b>Taster:</b> piletaster = roter X/Y · <kbd>Q</kbd>/<kbd>E</kbd> = roter Z · <kbd>+</kbd>/<kbd>−</kbd> = zoom · <kbd>0</kbd> = nulstil.<br><br>
+      <b>Input:</b> kemiske formler (H2O, PCl5, XeF4, SO4 2-, NH4+, Ca2+), kondenserede formler (CH3COOH), navne (vand, ethanol, koffein, glukose …) eller SMILES (C1=CC=CC=C1, CC(=O)O). Ukendte formler bygges automatisk med VSEPR og en søgning efter den bedste Lewis-struktur (mindst mulige formelle ladninger og fuld oktet).<br><br>
+      <b>Zoom og atomvisning:</b> scroll ind mod et atom (eller dobbeltklik på det, eller tryk "⚛ atom") for at skifte til atomvisningen med orbitaler, elektroner og kerne. Atomvisningen bliver aktiv, til du selv forlader den, så du kan zoome frit: ud for at få overblik over alle orbitaler og ind til atomkernen med protoner og neutroner. Knapperne "⊙ Overblik" og "● Kerne" hopper direkte derhen. Du kommer tilbage til molekylet med "⟵ Molekyle", <kbd>Esc</kbd> eller ved at blive ved med at scrolle ud. Atomkerner og orbitalstørrelser er ikke vist i korrekt målestok.
+    </div>
+  </aside>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   GRUNDDATA: GRUNDSTOFFER
+   ===================================================================== */
+const SYMS = "H He Li Be B C N O F Ne Na Mg Al Si P S Cl Ar K Ca Sc Ti V Cr Mn Fe Co Ni Cu Zn Ga Ge As Se Br Kr Rb Sr Y Zr Nb Mo Tc Ru Rh Pd Ag Cd In Sn Sb Te I Xe Cs Ba La Ce Pr Nd Pm Sm Eu Gd Tb Dy Ho Er Tm Yb Lu Hf Ta W Re Os Ir Pt Au Hg Tl Pb Bi Po At Rn Fr Ra Ac Th Pa U Np Pu Am Cm Bk Cf Es Fm Md No Lr Rf Db Sg Bh Hs Mt Ds Rg Cn Nh Fl Mc Lv Ts Og".split(' ');
+const NAMES = "brint helium lithium beryllium bor kulstof kvælstof ilt fluor neon natrium magnesium aluminium silicium fosfor svovl klor argon kalium calcium scandium titan vanadium chrom mangan jern kobolt nikkel kobber zink gallium germanium arsen selen brom krypton rubidium strontium yttrium zirconium niobium molybdæn technetium ruthenium rhodium palladium sølv cadmium indium tin antimon tellur iod xenon cæsium barium lanthan cerium praseodym neodym promethium samarium europium gadolinium terbium dysprosium holmium erbium thulium ytterbium lutetium hafnium tantal wolfram rhenium osmium iridium platin guld kviksølv thallium bly bismuth polonium astat radon francium radium actinium thorium protactinium uran neptunium plutonium americium curium berkelium californium einsteinium fermium mendelevium nobelium lawrencium rutherfordium dubnium seaborgium bohrium hassium meitnerium darmstadtium røntgenium copernicium nihonium flerovium moscovium livermorium tennessin oganesson".split(' ');
+const MASS = [1.008,4.0026,6.94,9.0122,10.81,12.011,14.007,15.999,18.998,20.180,22.990,24.305,26.982,28.085,30.974,32.06,35.45,39.948,39.098,40.078,44.956,47.867,50.942,51.996,54.938,55.845,58.933,58.693,63.546,65.38,69.723,72.630,74.922,78.971,79.904,83.798,85.468,87.62,88.906,91.224,92.906,95.95,98,101.07,102.91,106.42,107.87,112.41,114.82,118.71,121.76,127.60,126.90,131.29,132.91,137.33,138.91,140.12,140.91,144.24,145,150.36,151.96,157.25,158.93,162.50,164.93,167.26,168.93,173.05,174.97,178.49,180.95,183.84,186.21,190.23,192.22,195.08,196.97,200.59,204.38,207.2,208.98,209,210,222,223,226,227,232.04,231.04,238.03,237,244,243,247,247,251,252,257,258,259,266,267,268,269,270,277,278,281,282,285,286,289,290,293,294,294];
+const EN = [2.20,0,0.98,1.57,2.04,2.55,3.04,3.44,3.98,0,0.93,1.31,1.61,1.90,2.19,2.58,3.16,0,0.82,1.00,1.36,1.54,1.63,1.66,1.55,1.83,1.88,1.91,1.90,1.65,1.81,2.01,2.18,2.55,2.96,3.00,0.82,0.95,1.22,1.33,1.6,2.16,1.9,2.2,2.28,2.20,1.93,1.69,1.78,1.96,2.05,2.1,2.66,2.6,0.79,0.89,1.10,1.12,1.13,1.14,1.13,1.17,1.2,1.2,1.1,1.22,1.23,1.24,1.25,1.1,1.27,1.3,1.5,2.36,1.9,2.2,2.20,2.28,2.54,2.00,1.62,2.33,2.02,2.0,2.2,2.2,0.7,0.9,1.1,1.3,1.5,1.38,1.36,1.28,1.13,1.28,1.3,1.3,1.3,1.3,1.3,1.3,1.3];
+const RCOV = [31,28,128,96,84,76,71,66,57,58,166,141,121,111,107,105,102,106,203,176,170,160,153,139,139,132,126,124,132,122,122,120,119,120,120,116,220,195,190,175,164,154,147,146,142,139,145,144,142,139,139,138,139,140,244,215,207,204,203,201,199,198,198,196,194,192,192,189,190,187,187,175,170,162,151,144,141,136,136,132,145,146,148,140,150,150,260,221,215,206,200,196,190,187,180,169];
+const COLORS = {H:'#ffffff',He:'#d9ffff',Li:'#cc80ff',Be:'#c2ff00',B:'#ffb5b5',C:'#a8a8a8',N:'#3a6bff',O:'#ff2a2a',F:'#90e050',Ne:'#b3e3f5',Na:'#ab5cf2',Mg:'#8aff00',Al:'#bfa6a6',Si:'#f0c8a0',P:'#ff8000',S:'#ffff30',Cl:'#1ff01f',Ar:'#80d1e3',K:'#8f40d4',Ca:'#3dff00',Sc:'#e6e6e6',Ti:'#bfc2c7',V:'#a6a6ab',Cr:'#8a99c7',Mn:'#9c7ac7',Fe:'#e06633',Co:'#f090a0',Ni:'#50d050',Cu:'#c88033',Zn:'#7d80b0',Ga:'#c28f8f',Ge:'#668f8f',As:'#bd80e3',Se:'#ffa100',Br:'#c03030',Kr:'#5cb8d1',Rb:'#702eb0',Sr:'#00ff00',Y:'#94ffff',Zr:'#94e0e0',Nb:'#73c2c9',Mo:'#54b5b5',Tc:'#3b9e9e',Ru:'#248f8f',Rh:'#0a7d8c',Pd:'#006985',Ag:'#c0c0c0',Cd:'#ffd98f',In:'#a67573',Sn:'#668080',Sb:'#9e63b5',Te:'#d47a00',I:'#a020c0',Xe:'#429eb0',Cs:'#57178f',Ba:'#00c900',La:'#70d4ff',Hf:'#4dc2ff',Ta:'#4da6ff',W:'#2194d6',Re:'#267dab',Os:'#266696',Ir:'#175487',Pt:'#d0d0e0',Au:'#ffd123',Hg:'#b8b8d0',Tl:'#a6544d',Pb:'#575961',Bi:'#9e4fb5',Po:'#ab5c00',At:'#754f45',Rn:'#428296',Fr:'#420066',Ra:'#007d00',Ac:'#70abfa',Th:'#00baff',Pa:'#00a1ff',U:'#008fff'};
+const MASSNUM_FIX = {29:63,35:79,30:64,31:69,32:74,34:80,42:98,44:102,48:114,50:120,51:121,52:130,54:132,56:138,60:142,62:152,63:153,64:158,66:164,68:166,70:174,72:180,76:192,77:193,80:202,81:205,82:208,2:4,17:35};
+const Z_OF = {}; SYMS.forEach((s,i)=>Z_OF[s]=i+1);
+const NONMETAL = new Set(['H','He','B','C','N','O','F','Ne','Si','P','S','Cl','Ar','Ge','As','Se','Br','Kr','Sb','Te','I','Xe','At','Rn']);
+const HALOGEN = new Set(['F','Cl','Br','I','At']);
+
+function period(Z){return Z<=2?1:Z<=10?2:Z<=18?3:Z<=36?4:Z<=54?5:Z<=86?6:7;}
+function groupOf(Z){
+  const starts=[0,2,10,18,36,54,86,118]; const p=period(Z); const pos=Z-starts[p-1];
+  if(p===1) return Z===1?1:18;
+  if(p<=3) return pos<=2?pos:pos+10;
+  if(p<=5) return pos;
+  if(pos<=2) return pos; if(pos<=17) return 3; return pos-14;
+}
+function isFBlock(Z){return (Z>=57&&Z<=71)||(Z>=89&&Z<=103);}
+function isTM(Z){const g=groupOf(Z);return g>=3&&g<=12;}
+function valE(Z){ if(Z===2) return 2; const g=groupOf(Z); if(g<=2) return g; if(g>=13) return g-10; return isFBlock(Z)?3:g; }
+function enOf(Z){const e=EN[Z-1]; return e?e:(Z===2||Z===10||Z===18?4.5:1.5);}
+function rcov(Z){return (RCOV[Z-1]||160)/100;}
+function massNumber(Z){ return MASSNUM_FIX[Z] || Math.round(MASS[Z-1]); }
+function colorOf(sym){ if(COLORS[sym]) return COLORS[sym]; const Z=Z_OF[sym]; if(isFBlock(Z)) return '#6fe0c8'; if(isTM(Z)) return '#c8a0a0'; return '#ff69b4'; }
+function maxVal(sym){
+  const t={H:1,C:4,Si:4,Ge:4,Sn:4,Pb:4,N:3,P:3,As:3,Sb:3,O:2,S:2,Se:2,Te:2,B:3,Al:3,Ga:3,Be:2,Mg:2,Ca:2,Zn:2,F:1,Cl:1,Br:1,I:1,Li:1,Na:1,K:1,Rb:1,Cs:1,He:0,Ne:0,Ar:0,Kr:0,Xe:0,Rn:0};
+  if(sym in t) return t[sym]; const Z=Z_OF[sym], g=groupOf(Z); if(g<=2) return g; if(g>=13) return g>=15?18-g:g-10; return 2;
+}
+const fmt=(x,d=1)=>x.toFixed(d).replace('.',',');
+
+/* =====================================================================
+   ELEKTRONKONFIGURATION
+   ===================================================================== */
+const SUBL='spdfghi';
+const MAD=[[1,0],[2,0],[2,1],[3,0],[3,1],[4,0],[3,2],[4,1],[5,0],[4,2],[5,1],[6,0],[4,3],[5,2],[6,1],[7,0],[5,3],[6,2],[7,1]];
+const EXC={24:{'4s':1,'3d':5},29:{'4s':1,'3d':10},41:{'5s':1,'4d':4},42:{'5s':1,'4d':5},44:{'5s':1,'4d':7},45:{'5s':1,'4d':8},46:{'5s':0,'4d':10},47:{'5s':1,'4d':10},57:{'4f':0,'5d':1},58:{'4f':1,'5d':1},64:{'4f':7,'5d':1},78:{'6s':1,'5d':9},79:{'6s':1,'5d':10},89:{'5f':0,'6d':1},90:{'5f':0,'6d':2},91:{'5f':2,'6d':1},92:{'5f':3,'6d':1},93:{'5f':4,'6d':1},96:{'5f':7,'6d':1},103:{'6d':0,'7p':1}};
+function electronConfig(Z, charge){
+  charge=charge||0;
+  const occ=new Map(); let e=Z;
+  for(const [n,l] of MAD){ const cap=2*(2*l+1); const k=Math.min(cap,e); occ.set(n+SUBL[l],k); e-=k; if(e<=0) break; }
+  if(EXC[Z]) for(const k in EXC[Z]) occ.set(k,EXC[Z][k]);
+  let q=charge;
+  while(q>0){ // fjern elektroner fra højeste n, derefter højeste l
+    let best=null,bn=-1,bl=-1;
+    for(const [k,v] of occ){ if(v<=0) continue; const n=+k[0], l=SUBL.indexOf(k[1]); if(n>bn||(n===bn&&l>bl)){bn=n;bl=l;best=k;} }
+    if(!best) break; occ.set(best,occ.get(best)-1); q--;
+  }
+  while(q<0){
+    let done=false;
+    for(const [n,l] of MAD){ const k=n+SUBL[l]; const cap=2*(2*l+1); const v=occ.get(k)||0; if(v<cap){occ.set(k,v+1);done=true;break;} }
+    if(!done) break; q++;
+  }
+  const list=[];
+  for(const [n,l] of MAD){ const k=n+SUBL[l]; const v=occ.get(k)||0; if(v>0) list.push({n,l,e:v,key:k}); }
+  return list;
+}
+const SUP={'0':'⁰','1':'¹','2':'²','3':'³','4':'⁴','5':'⁵','6':'⁶','7':'⁷','8':'⁸','9':'⁹','+':'⁺','-':'⁻'};
+const SUBD={'0':'₀','1':'₁','2':'₂','3':'₃','4':'₄','5':'₅','6':'₆','7':'₇','8':'₈','9':'₉'};
+const sup=s=>String(s).split('').map(c=>SUP[c]||c).join('');
+const subd=s=>String(s).split('').map(c=>SUBD[c]||c).join('');
+function configString(list){ return list.map(o=>o.key+sup(o.e)).join(' '); }
+function configShort(Z,list){
+  const NG=[86,54,36,18,10,2];
+  for(const ng of NG){ if(ng>=Z) continue;
+    const base=electronConfig(ng); const bm=new Map(base.map(o=>[o.key,o.e]));
+    let ok=true; for(const [k,v] of bm){ const o=list.find(x=>x.key===k); if(!o||o.e<v){ok=false;break;} }
+    if(!ok) continue;
+    const rest=list.filter(o=>!(bm.has(o.key)&&bm.get(o.key)===o.e)).map(o=>({...o,e:o.e-(bm.get(o.key)||0)})).filter(o=>o.e>0);
+    return '['+SYMS[ng-1]+'] '+configString(rest);
+  }
+  return configString(list);
+}
+
+/* =====================================================================
+   VEKTOR-HJÆLP
+   ===================================================================== */
+const V={
+  add:(a,b)=>[a[0]+b[0],a[1]+b[1],a[2]+b[2]], sub:(a,b)=>[a[0]-b[0],a[1]-b[1],a[2]-b[2]],
+  mul:(a,s)=>[a[0]*s,a[1]*s,a[2]*s], dot:(a,b)=>a[0]*b[0]+a[1]*b[1]+a[2]*b[2],
+  cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],
+  len:a=>Math.hypot(a[0],a[1],a[2]),
+  norm:a=>{const l=Math.hypot(a[0],a[1],a[2])||1;return [a[0]/l,a[1]/l,a[2]/l];},
+  dist:(a,b)=>Math.hypot(a[0]-b[0],a[1]-b[1],a[2]-b[2]),
+  perp:a=>{const t=Math.abs(a[0])<0.9?[1,0,0]:[0,1,0];return V.norm(V.cross(a,t));},
+  angle:(a,b)=>Math.acos(Math.max(-1,Math.min(1,V.dot(V.norm(a),V.norm(b)))))*180/Math.PI
+};
+function rotAxis(ax,ang){ const [x,y,z]=V.norm(ax); const c=Math.cos(ang),s=Math.sin(ang),t=1-c;
+  return [t*x*x+c,t*x*y-s*z,t*x*z+s*y, t*x*y+s*z,t*y*y+c,t*y*z-s*x, t*x*z-s*y,t*y*z+s*x,t*z*z+c]; }
+const mulMV=(M,v)=>[M[0]*v[0]+M[1]*v[1]+M[2]*v[2],M[3]*v[0]+M[4]*v[1]+M[5]*v[2],M[6]*v[0]+M[7]*v[1]+M[8]*v[2]];
+function mulMM(A,B){const C=new Array(9);for(let i=0;i<3;i++)for(let j=0;j<3;j++)C[i*3+j]=A[i*3]*B[j]+A[i*3+1]*B[3+j]+A[i*3+2]*B[6+j];return C;}
+const IDM=[1,0,0,0,1,0,0,0,1];
+function rotFromTo(a,b){ a=V.norm(a); b=V.norm(b); const c=V.dot(a,b);
+  if(c>0.999999) return IDM.slice(); if(c<-0.999999) return rotAxis(V.perp(a),Math.PI);
+  return rotAxis(V.cross(a,b),Math.acos(c)); }
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+function fibDirs(n){const out=[];const g=Math.PI*(3-Math.sqrt(5));for(let i=0;i<n;i++){const y=1-2*(i+0.5)/n;const r=Math.sqrt(1-y*y);out.push([Math.cos(g*i)*r,y,Math.sin(g*i)*r]);}return out;}
+
+/* =====================================================================
+   MOLEKYLE-DATASTRUKTUR
+   ===================================================================== */
+function newMol(){return {atoms:[],bonds:[],charge:0,name:'',source:'',notes:[]};}
+function addAtom(m,sym,charge){m.atoms.push({el:sym,Z:Z_OF[sym],charge:charge||0,lp:0,rad:0,nb:[]});return m.atoms.length-1;}
+function addBond(m,a,b,o){m.bonds.push({a,b,o});}
+function buildAdj(m){ for(const a of m.atoms) a.nb=[]; m.bonds.forEach((b,k)=>{m.atoms[b.a].nb.push({j:b.b,o:b.o,k});m.atoms[b.b].nb.push({j:b.a,o:b.o,k});}); }
+function bondSums(m){const s=new Array(m.atoms.length).fill(0);for(const b of m.bonds){s[b.a]+=b.o;s[b.b]+=b.o;}return s;}
+function cloneMol(m){const c=newMol();c.charge=m.charge;c.atoms=m.atoms.map(a=>({...a,nb:[]}));c.bonds=m.bonds.map(b=>({...b}));return c;}
+
+/* Lewis-struktur når bindingsordener er kendte (SMILES) */
+function lewisFromOrders(m){
+  buildAdj(m); const bs=bondSums(m);
+  m.atoms.forEach((a,i)=>{
+    if(isTM(a.Z)&&m.atoms.length>1){a.lp=0;a.rad=0;return;}
+    let e=valE(a.Z)-a.charge-bs[i]; if(e<0) e=0;
+    a.lp=e>>1; a.rad=e&1;
+  });
+}
+/* Automatisk Lewis-struktur ud fra et skelet af enkeltbindinger */
+function lewisAuto(m){
+  const n=m.atoms.length; buildAdj(m);
+  const at=m.atoms;
+  let total=at.reduce((s,a)=>s+valE(a.Z),0)-m.charge;
+  const bs=bondSums(m);
+  let rem=total-bs.reduce((s,x)=>s+x,0);
+  if(rem<0) return false;
+  const lp=new Array(n).fill(0), rad=new Array(n).fill(0);
+  const isMetal=i=>!NONMETAL.has(at[i].el);
+  const order=[...Array(n).keys()].filter(i=>at[i].Z!==1&&!isMetal(i)).sort((a,b)=>(enOf(at[b].Z)-enOf(at[a].Z))||(at[a].nb.length-at[b].nb.length)||(a-b));
+  for(const i of order){ const need=Math.max(0,Math.floor((8-2*bs[i])/2)); const g=Math.min(need,Math.floor(rem/2)); lp[i]+=g; rem-=2*g; }
+  if(rem>=2){
+    let cand=[...Array(n).keys()].filter(i=>at[i].Z!==1&&!isMetal(i)&&period(at[i].Z)>=3);
+    if(!cand.length) cand=[...Array(n).keys()].filter(i=>at[i].Z!==1);
+    if(!cand.length) cand=[...Array(n).keys()];
+    cand.sort((a,b)=>(at[b].nb.length-at[a].nb.length)||(enOf(at[a].Z)-enOf(at[b].Z)));
+    const t=cand[0]; const g=Math.floor(rem/2); lp[t]+=g; rem-=2*g;
+  }
+  const elec=i=>2*lp[i]+2*bs[i]+rad[i];
+  if(rem===1){
+    let cand=[...Array(n).keys()].filter(i=>at[i].Z!==1&&elec(i)<8);
+    if(!cand.length) cand=[...Array(n).keys()].filter(i=>at[i].Z!==1);
+    if(!cand.length) cand=[0];
+    cand.sort((a,b)=>enOf(at[a].Z)-enOf(at[b].Z)); rad[cand[0]]=1; rem=0;
+  }
+  const fc=i=>valE(at[i].Z)-2*lp[i]-rad[i]-bs[i];
+  const bondIdx=(i,j)=>m.bonds.findIndex(b=>(b.a===i&&b.b===j)||(b.a===j&&b.b===i));
+  const promote=(A,N)=>{lp[N]--; m.bonds[bondIdx(A,N)].o++; bs[A]++; bs[N]++;};
+  const noPromote=new Set(['H','B','Be','Al','Li','Mg','Na']);
+  for(let guard=0;guard<60;guard++){
+    let best=null,bd=0;
+    for(let i=0;i<n;i++){ if(noPromote.has(at[i].el)||isMetal(i)) continue; const e=elec(i); if(e+2>8) continue;
+      if(!at[i].nb.some(x=>lp[x.j]>0&&at[x.j].Z!==1)) continue; const d=8-e; if(d>bd){bd=d;best=i;} }
+    if(best===null) break;
+    const cands=at[best].nb.map(x=>x.j).filter(j=>lp[j]>0&&at[j].Z!==1);
+    cands.sort((a,b)=>(fc(a)-fc(b))||((HALOGEN.has(at[a].el)?1:0)-(HALOGEN.has(at[b].el)?1:0))||(enOf(at[a].Z)-enOf(at[b].Z)));
+    promote(best,cands[0]);
+  }
+  // minimér formelle ladninger på atomer i periode >= 3 (udvidet oktet)
+  for(let guard=0;guard<60;guard++){
+    let did=false;
+    for(let i=0;i<n&&!did;i++){
+      if(isMetal(i)||period(at[i].Z)<3||fc(i)<=0) continue;
+      const c=at[i].nb.map(x=>x.j).filter(j=>fc(j)<0&&lp[j]>0&&!HALOGEN.has(at[j].el)&&at[j].Z!==1);
+      if(c.length){ c.sort((a,b)=>fc(a)-fc(b)); promote(i,c[0]); did=true; }
+    }
+    if(!did) break;
+  }
+  at.forEach((a,i)=>{a.lp=lp[i];a.rad=rad[i];a.charge=fc(i);});
+  buildAdj(m);
+  return true;
+}
+function lewisScore(m){
+  const bs=bondSums(m); let s=0;
+  m.atoms.forEach((a,i)=>{
+    const e=2*a.lp+2*bs[i]+a.rad;
+    if(a.Z===1){ if(e!==2) s+=10; }
+    else if(a.Z>=6&&a.Z<=9){ if(e!==8) s+=10; }
+    else if(a.Z===3||a.Z===4||a.Z===5){ if(e>8) s+=10; }
+    else if(NONMETAL.has(a.el)&&period(a.Z)>=3){ if(e<8) s+=10; else if(e>8) s+=0.2*(e-8)/2; }
+    s+=Math.abs(a.charge); s+=a.rad*3;
+  });
+  for(const b of m.bonds){ const A=m.atoms[b.a],B=m.atoms[b.b];
+    if(A.el==='C'&&B.el==='C'&&b.o>=2) s+=0.1;
+    if(A.el==='O'&&B.el==='O') s+=1.0;
+    if(b.o>=2&&(A.el==='F'||B.el==='F')) s+=0.6;
+  }
+  return s;
+}
+
+/* =====================================================================
+   FORMEL-PARSER
+   ===================================================================== */
+function parseFormulaBody(s){
+  let i=0;
+  function group(){
+    const counts={};
+    while(i<s.length){
+      const ch=s[i];
+      if(ch==='('||ch==='['||ch==='{'){ i++; const g=group(); const close=s[i]; if(!close||!')]}'.includes(close)) throw new Error('Manglende parentes'); i++; const k=num(); for(const e in g) counts[e]=(counts[e]||0)+g[e]*k; continue; }
+      if(ch===')'||ch===']'||ch==='}') return counts;
+      if(ch==='·'||ch==='*'||ch==='.'){ i++; const k=num(); const g=group(); for(const e in g) counts[e]=(counts[e]||0)+g[e]*k; return counts; }
+      if(/[A-Z]/.test(ch)){
+        let sym=ch; if(i+1<s.length&&/[a-z]/.test(s[i+1])&&Z_OF[ch+s[i+1]]){sym=ch+s[i+1];i+=2;} else i++;
+        if(!Z_OF[sym]) throw new Error('Ukendt grundstof: '+sym);
+        const k=num(); counts[sym]=(counts[sym]||0)+k; continue;
+      }
+      throw new Error('Uventet tegn: "'+ch+'"');
+    }
+    return counts;
+  }
+  function num(){ let t=''; while(i<s.length&&/[0-9]/.test(s[i])) t+=s[i++]; return t?parseInt(t,10):1; }
+  const c=group(); if(i<s.length) throw new Error('Ugyldig formel');
+  return c;
+}
+/* returnerer liste af mulige fortolkninger {counts, charge} */
+function parseFormulaCandidates(str){
+  let s=str.trim().replace(/[−–]/g,'-').replace(/⁺/g,'+').replace(/⁻/g,'-');
+  s=s.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]/g,c=>'⁰¹²³⁴⁵⁶⁷⁸⁹'.indexOf(c)).replace(/[₀₁₂₃₄₅₆₇₈₉]/g,c=>'₀₁₂₃₄₅₆₇₈₉'.indexOf(c));
+  const out=[];
+  const tryAdd=(body,charge)=>{ body=body.replace(/\s+/g,''); if(!body) return; try{ const c=parseFormulaBody(body); if(Object.keys(c).length) out.push({counts:c,charge}); }catch(e){} };
+  let m;
+  if((m=s.match(/^(.*?)\s*\^\s*(\d*)\s*([+-])$/))||(m=s.match(/^(.*?)\s+(\d*)\s*([+-])$/))||(m=s.match(/^(.*?)\((\d*)([+-])\)$/))){
+    tryAdd(m[1],(m[3]==='-'?-1:1)*(m[2]?parseInt(m[2]):1)); return out;
+  }
+  if((m=s.match(/^(.*?)\s*\^?\s*([+-])(\d+)$/))){ tryAdd(m[1],(m[2]==='-'?-1:1)*parseInt(m[3])); return out; }
+  if((m=s.match(/^(.*?)([+-]{2,})$/))){ tryAdd(m[1],(m[2][0]==='-'?-1:1)*m[2].length); return out; }
+  if((m=s.match(/^(.*?)(\d*)([+-])$/))){
+    const body=m[1], dig=m[2], sg=m[3]==='-'?-1:1;
+    const singleEl=/^[A-Z][a-z]?$/.test(body)&&Z_OF[body];
+    if(dig&&singleEl){ tryAdd(body,sg*parseInt(dig)); tryAdd(body+dig,sg); return out; }
+    tryAdd(body+dig,sg);
+    for(let k=1;k<=dig.length;k++){ const q=parseInt(dig.slice(dig.length-k)); if(q>=1&&q<=4) tryAdd(body+dig.slice(0,dig.length-k),sg*q); }
+    return out;
+  }
+  tryAdd(s,0);
+  return out;
+}
+function hillOrder(counts){ const els=Object.keys(counts); if(counts.C){ return ['C',...(counts.H?['H']:[]),...els.filter(e=>e!=='C'&&e!=='H').sort()]; } return els.sort(); }
+function hillKey(counts,charge){ return hillOrder(counts).map(e=>e+(counts[e]>1?counts[e]:'')).join('')+(charge?('^'+charge):''); }
+function countsOf(m){const c={};for(const a of m.atoms)c[a.el]=(c[a.el]||0)+1;return c;}
+function formulaHTML(counts,charge){
+  let s=hillOrder(counts).map(e=>e+(counts[e]>1?'<sub>'+counts[e]+'</sub>':'')).join('');
+  if(charge) s+='<sup>'+(Math.abs(charge)>1?Math.abs(charge):'')+(charge>0?'+':'−')+'</sup>';
+  return s;
+}
+function formulaText(counts,charge){
+  let s=hillOrder(counts).map(e=>e+(counts[e]>1?subd(counts[e]):'')).join('');
+  if(charge) s+=sup((Math.abs(charge)>1?Math.abs(charge):'')+(charge>0?'+':'-'));
+  return s;
+}
+
+/* =====================================================================
+   STRUKTUR UD FRA FORMEL (skelet-søgning + Lewis-score)
+   ===================================================================== */
+const HETERO=new Set(['N','O','S','P','Se','As','Te']);
+function uniquePerms(arr,limit){
+  const res=[]; const a=arr.slice().sort(); const used=new Array(a.length).fill(false); const cur=[];
+  (function rec(){ if(res.length>=limit) return; if(cur.length===a.length){res.push(cur.slice());return;}
+    for(let i=0;i<a.length;i++){ if(used[i]) continue; if(i>0&&a[i]===a[i-1]&&!used[i-1]) continue; used[i]=true;cur.push(a[i]);rec();cur.pop();used[i]=false; } })();
+  return res;
+}
+function structureFromFormula(counts,charge){
+  const heavyEls=[]; for(const e of hillOrder(counts)) if(e!=='H') for(let k=0;k<counts[e];k++) heavyEls.push(e);
+  const nH=counts.H||0;
+  if(heavyEls.length===0){
+    const m=newMol(); m.charge=charge; for(let k=0;k<nH;k++){ addAtom(m,'H'); if(k>0) addBond(m,k-1,k,1); }
+    lewisAuto(m); return m;
+  }
+  if(heavyEls.length===1&&nH===0){
+    const m=newMol(); m.charge=charge; addAtom(m,heavyEls[0],charge); singleAtomDots(m); return m;
+  }
+  // --- skeletter (lister af heavy-atom-elementer + kanter)
+  const skels=[]; const seen=new Set();
+  const addSkel=(els,edges)=>{ const key=els.join(',')+'|'+edges.map(e=>e[0]<e[1]?e[0]+'-'+e[1]:e[1]+'-'+e[0]).sort().join(','); if(seen.has(key)) return; seen.add(key); skels.push({els,edges}); };
+  const H=heavyEls;
+  const Cidx=H.map((e,i)=>e==='C'?i:-1).filter(i=>i>=0);
+  const others=H.map((e,i)=>e!=='C'?i:-1).filter(i=>i>=0);
+  const chainEdges=idx=>{const e=[];for(let k=1;k<idx.length;k++)e.push([idx[k-1],idx[k]]);return e;};
+  function carbonVariants(){
+    if(Cidx.length<2) return;
+    const base=chainEdges(Cidx); const nC=Cidx.length;
+    // a: heteroatomer fordelt fra kæden ende
+    {const e=base.slice(); others.forEach((o,k)=>e.push([Cidx[nC-1-(k%nC)],o])); addSkel(H,e);}
+    // b: alle på sidste C (max 3), resten bagud
+    {const e=base.slice(); let ci=nC-1,cnt=0; for(const o of others){ if(cnt>=(ci===nC-1?3:2)){ci=Math.max(0,ci-1);cnt=0;} e.push([Cidx[ci],o]); cnt++; } addSkel(H,e);}
+    // c: monovalente på C, multivalente samlet (fx nitro)
+    {const multi=others.filter(o=>maxVal(H[o])>=3), mono=others.filter(o=>maxVal(H[o])<3);
+     if(multi.length===1&&mono.length){ const e=base.slice(); e.push([Cidx[nC-1],multi[0]]); const os=mono.filter(o=>H[o]==='O'), rest=mono.filter(o=>H[o]!=='O'); os.forEach(o=>e.push([multi[0],o])); rest.forEach((o,k)=>e.push([Cidx[k%nC],o])); addSkel(H,e);} }
+    // d: heteroatom indskudt i kæden (ether/amin)
+    {const ins=others.find(o=>maxVal(H[o])>=2); if(ins!==undefined&&nC>=2){ const half=Math.ceil(nC/2); const chain=[...Cidx.slice(0,half),ins,...Cidx.slice(half)]; const e=chainEdges(chain); others.filter(o=>o!==ins).forEach((o,k)=>e.push([Cidx[nC-1-(k%nC)],o])); addSkel(H,e);} }
+  }
+  function stars(){
+    const uniq=[...new Set(H)].filter(e=>counts[e]===1&&e!=='F').sort((a,b)=>enOf(Z_OF[a])-enOf(Z_OF[b]));
+    for(const c of uniq){ const ci=H.indexOf(c); addSkel(H,H.map((_,j)=>j).filter(j=>j!==ci).map(j=>[ci,j])); }
+  }
+  function generic(){
+    const multi=H.map((e,i)=>i).filter(i=>maxVal(H[i])>=2).sort((a,b)=>(maxVal(H[b])-maxVal(H[a]))||(enOf(Z_OF[H[a]])-enOf(Z_OF[H[b]])));
+    const mono=H.map((e,i)=>i).filter(i=>maxVal(H[i])<2);
+    if(!multi.length) return;
+    const e=chainEdges(multi); const deg=new Array(H.length).fill(0); e.forEach(([a,b])=>{deg[a]++;deg[b]++;});
+    for(const o of mono){ let best=multi[0],bc=-99; for(const m of multi){ const c=maxVal(H[m])-deg[m]; if(c>bc){bc=c;best=m;} } e.push([best,o]); deg[best]++; deg[o]++; }
+    addSkel(H,e);
+  }
+  function perms(){
+    if(H.length>6) return;
+    for(const p of uniquePerms(H,150)){ const e=chainEdges(p.map((_,k)=>k)); addSkel(p,e); }
+  }
+  if(H.length===1) addSkel(H,[]);
+  if(Cidx.length>=2){ carbonVariants(); stars(); generic(); perms(); }
+  else { stars(); generic(); perms(); }
+  // --- fordel H og evaluer
+  let best=null,bestS=Infinity;
+  for(const sk of skels){
+    const els=sk.els, nHv=els.length; const deg=new Array(nHv).fill(0); sk.edges.forEach(([a,b])=>{deg[a]++;deg[b]++;});
+    const cap=els.map((e,i)=>Math.max(0,maxVal(e)-deg[i]+(charge>0&&HETERO.has(e)?1:0)));
+    const het=els.map((e,i)=>i).filter(i=>HETERO.has(els[i])), oth=els.map((e,i)=>i).filter(i=>!HETERO.has(els[i]));
+    const hetCap=het.reduce((s,i)=>s+cap[i],0);
+    const dists=[]; const dseen=new Set();
+    const pushD=d=>{const k=d.join(',');if(!dseen.has(k)){dseen.add(k);dists.push(d);}};
+    for(let k=0;k<=Math.min(nH,hetCap);k++){
+      for(const greedy of [false,true]){
+        const d=new Array(nHv).fill(0), c=cap.slice(); let ok=true;
+        const give=(pool,cnt)=>{ for(let t=0;t<cnt;t++){ let bi=-1;
+          if(greedy){ bi=pool.find(i=>c[i]>0); if(bi===undefined) bi=-1; }
+          else { let bc=0; for(const i of pool){ if(c[i]>bc){bc=c[i];bi=i;} } }
+          if(bi<0) return cnt-t; d[bi]++; c[bi]--; } return 0; };
+        let left=give(het,k); if(left) ok=false;
+        left=give(oth,nH-k); if(left) left=give(het,left);
+        if(left){ // overløb: på atom med flest naboer (hypervalent)
+          let bi=0; for(let i=0;i<nHv;i++) if(deg[i]>deg[bi]) bi=i; d[bi]+=left; }
+        if(ok) pushD(d);
+      }
+    }
+    for(const d of dists){
+      const m=newMol(); m.charge=charge;
+      els.forEach(e=>addAtom(m,e));
+      sk.edges.forEach(([a,b])=>addBond(m,a,b,1));
+      d.forEach((cnt,i)=>{for(let t=0;t<cnt;t++){const h=addAtom(m,'H');addBond(m,i,h,1);}});
+      if(!lewisAuto(m)) continue;
+      const s=lewisScore(m);
+      if(s<bestS-1e-9){bestS=s;best=m;}
+    }
+  }
+  if(best) best.lewisScore=bestS;
+  return best;
+}
+function singleAtomDots(m){
+  const a=m.atoms[0]; let v=valE(a.Z)-a.charge; if(isTM(a.Z)) v=Math.max(0,v);
+  if(v>8) v=8; if(v<0) v=0;
+  const pairs=Math.max(0,v-4); a.lp=pairs; a.rad=v-2*pairs; buildAdj(m);
+}
+
+/* =====================================================================
+   SMILES-PARSER
+   ===================================================================== */
+function parseSMILES(s){
+  const m=newMol(); const atoms=[]; const bonds=[];
+  let i=0, prev=-1, pend=null; const stack=[]; const rings={};
+  const bondOrder=c=>c==='='?2:c==='#'?3:c==='$'?4:c===':'?'ar':1;
+  const mk=(a,b,sym)=>{ let o; if(sym) o=bondOrder(sym); else o=(atoms[a].arom&&atoms[b].arom)?'ar':1; bonds.push({a,b,o}); };
+  while(i<s.length){
+    const ch=s[i];
+    if(ch===' ') break;
+    if(ch==='('){stack.push(prev);i++;continue;}
+    if(ch===')'){prev=stack.pop();i++;continue;}
+    if('-=#$:/\\'.includes(ch)){pend=(ch==='/'||ch==='\\')?'-':ch;i++;continue;}
+    if(ch==='.'){prev=-1;i++;continue;}
+    if(/[0-9%]/.test(ch)){
+      let num; if(ch==='%'){num=s.substr(i+1,2);i+=3;} else {num=ch;i++;}
+      if(prev<0) throw new Error('Ringnummer uden atom');
+      if(rings[num]){ const r=rings[num]; mk(r.atom,prev,pend||r.bond); delete rings[num]; }
+      else rings[num]={atom:prev,bond:pend};
+      pend=null; continue;
+    }
+    let at=null;
+    if(ch==='['){
+      const j=s.indexOf(']',i); if(j<0) throw new Error('Manglende ]');
+      const c=s.substring(i+1,j); i=j+1;
+      const mm=c.match(/^(\d+)?([A-Z][a-z]?|se|as|te|[bcnops])(@{1,2}(?:TH[12]|AL[12]|SP[123]|TB\d+|OH\d+)?)?(H\d*)?((?:\+|-)+\d*)?(?::\d+)?$/);
+      if(!mm) throw new Error('Ugyldigt atom ['+c+']');
+      let sym=mm[2], arom=false;
+      if(/^[a-z]/.test(sym)){arom=true;sym=sym[0].toUpperCase()+sym.slice(1);}
+      if(!Z_OF[sym]) throw new Error('Ukendt grundstof: '+sym);
+      let h=0; if(mm[4]) h=mm[4].length>1?parseInt(mm[4].slice(1)):1;
+      let q=0; if(mm[5]){ const sg=mm[5][0]==='-'?-1:1; const d=mm[5].replace(/[+-]/g,''); q=d?sg*parseInt(d):sg*mm[5].length; }
+      at={el:sym,arom,h,charge:q,bracket:true};
+    } else {
+      const two=s.substr(i,2);
+      if(two==='Cl'||two==='Br'){at={el:two,arom:false};i+=2;}
+      else if('BCNOPSFIH'.includes(ch)){at={el:ch,arom:false};i++;}
+      else if('bcnops'.includes(ch)){at={el:ch.toUpperCase(),arom:true};i++;}
+      else throw new Error('Uventet tegn i SMILES: "'+ch+'"');
+      at.charge=0; at.bracket=false;
+    }
+    atoms.push(at); const idx=atoms.length-1;
+    if(prev>=0) mk(prev,idx,pend);
+    pend=null; prev=idx;
+  }
+  if(stack.length) throw new Error('Manglende ")" i SMILES');
+  if(Object.keys(rings).length) throw new Error('Ulukket ring i SMILES (ringnummer '+Object.keys(rings).join(', ')+')');
+  if(!atoms.length) throw new Error('Tom SMILES');
+  // kekulisering
+  const arBonds=bonds.filter(b=>b.o==='ar');
+  if(arBonds.length){
+    const nbr=atoms.map(()=>[]);
+    bonds.forEach((b,k)=>{nbr[b.a].push(k);nbr[b.b].push(k);});
+    const need=atoms.map((a,ai)=>{
+      if(!a.arom) return false;
+      let nAr=0,nonAr=0,exo=false;
+      for(const k of nbr[ai]){const b=bonds[k]; if(b.o==='ar') nAr++; else {nonAr+=b.o; if(b.o===2) exo=true;}}
+      if(exo) return false;
+      const cur=nAr+nonAr+(a.bracket?a.h:0);
+      if(!a.bracket){ if(a.el==='C') return cur<=3; if(a.el==='N'||a.el==='P'||a.el==='B') return cur===2; return false; }
+      let v={C:4,N:3,O:2,S:2,P:3,B:3,Se:2,As:3,Te:2}[a.el]||4;
+      if(a.el==='C') v-=Math.abs(a.charge); else v+=a.charge;
+      return v-cur>=1;
+    });
+    const matched=new Array(atoms.length).fill(false);
+    const nodes=atoms.map((a,i)=>i).filter(i=>need[i]);
+    function solve(){
+      let pick=-1,opts=null;
+      for(const v of nodes){ if(matched[v]) continue;
+        const o=nbr[v].filter(k=>{const b=bonds[k]; if(b.o!=='ar') return false; const w=b.a===v?b.b:b.a; return need[w]&&!matched[w];});
+        if(!opts||o.length<opts.length){pick=v;opts=o;} if(o.length===0) break; }
+      if(pick<0) return true;
+      if(!opts.length) return false;
+      for(const k of opts){ const b=bonds[k]; const w=b.a===pick?b.b:b.a; matched[pick]=matched[w]=true; b.kek=2; if(solve()) return true; matched[pick]=matched[w]=false; b.kek=undefined; }
+      return false;
+    }
+    if(!solve()){ m.notes.push('Kunne ikke kekulisere den aromatiske ring helt – nogle dobbeltbindinger mangler.'); }
+    for(const b of arBonds){ b.o=b.kek===2?2:1; }
+  }
+  // implicitte H
+  const DV={B:[3],C:[4],N:[3,5],O:[2],P:[3,5],S:[2,4,6],F:[1],Cl:[1],Br:[1],I:[1],H:[1]};
+  const bsum=atoms.map(()=>0); bonds.forEach(b=>{bsum[b.a]+=b.o;bsum[b.b]+=b.o;});
+  atoms.forEach((a,ai)=>{
+    if(a.bracket){ a.hTot=a.h; return; }
+    const vs=DV[a.el]||[0]; let h=0; for(const v of vs){ if(v>=bsum[ai]){h=v-bsum[ai];break;} }
+    a.hTot=h;
+  });
+  atoms.forEach(a=>addAtom(m,a.el,a.charge));
+  bonds.forEach(b=>addBond(m,b.a,b.b,b.o));
+  atoms.forEach((a,ai)=>{ for(let k=0;k<a.hTot;k++){ const h=addAtom(m,'H'); addBond(m,ai,h,1);} });
+  m.charge=atoms.reduce((s,a)=>s+a.charge,0);
+  if(m.atoms.length===1){ singleAtomDots(m); } else lewisFromOrders(m);
+  return m;
+}
+
+/* =====================================================================
+   ORDBOG: NAVNE -> STRUKTURER
+   ===================================================================== */
+const DICT_RAW=[
+['Vand','water','h2o,dihydrogenoxid,hoh','O'],
+['Hydrogenperoxid','hydrogen peroxide','h2o2,brintoverilte','OO'],
+['Ammoniak','ammonia','nh3','N'],
+['Ammonium-ion','ammonium','nh4+','[NH4+]'],
+['Oxonium-ion (hydronium)','hydronium','h3o+,oxonium,hydronium','[OH3+]'],
+['Hydroxid-ion','hydroxide','oh-','[OH-]'],
+['Methan','methane','ch4,metan','C'],
+['Ethan','ethane','c2h6,etan,ch3ch3','CC'],
+['Propan','propane','c3h8,ch3ch2ch3','CCC'],
+['Butan','butane','c4h10,ch3ch2ch2ch3','CCCC'],
+['2-methylpropan (isobutan)','isobutane','isobutan','CC(C)C'],
+['Pentan','pentane','c5h12','CCCCC'],
+['Hexan','hexane','c6h14','CCCCCC'],
+['Heptan','heptane','c7h16','CCCCCCC'],
+['Oktan','octane','c8h18,octan','CCCCCCCC'],
+['Ethen (ethylen)','ethene','c2h4,ethylen,ethylene,eten,ch2ch2','C=C'],
+['Propen','propene','c3h6,propylen','C=CC'],
+['But-2-en','2-butene','2-buten','CC=CC'],
+['Buta-1,3-dien','butadiene','butadien','C=CC=C'],
+['Propadien (allen)','allene','allen','C=C=C'],
+['Ethyn (acetylen)','ethyne','c2h2,acetylen,acetylene,etyn','C#C'],
+['Cyclopropan','cyclopropane','','C1CC1'],
+['Cyclobutan','cyclobutane','','C1CCC1'],
+['Cyclopentan','cyclopentane','','C1CCCC1'],
+['Cyclohexan','cyclohexane','','C1CCCCC1'],
+['Cuban','cubane','','C12C3C4C1C5C2C3C45'],
+['Benzen','benzene','c6h6,benzol','C1=CC=CC=C1'],
+['Toluen (methylbenzen)','toluene','methylbenzen,c6h5ch3','CC1=CC=CC=C1'],
+['Phenol','phenol','fenol,c6h5oh','OC1=CC=CC=C1'],
+['Anilin','aniline','c6h5nh2','NC1=CC=CC=C1'],
+['Styren','styrene','','C=CC1=CC=CC=C1'],
+['Naphthalen','naphthalene','naftalen','C1=CC=C2C=CC=CC2=C1'],
+['Benzoesyre','benzoic acid','c6h5cooh','OC(=O)C1=CC=CC=C1'],
+['Pyridin','pyridine','','C1=CC=NC=C1'],
+['Pyrrol','pyrrole','','C1=CNC=C1'],
+['Furan','furan','','C1=COC=C1'],
+['Thiophen','thiophene','','C1=CSC=C1'],
+['Methanol','methanol','ch3oh,metanol,træsprit','CO'],
+['Ethanol','ethanol','c2h5oh,ch3ch2oh,etanol,alkohol,sprit','CCO'],
+['Propan-1-ol','1-propanol','propanol,ch3ch2ch2oh','CCCO'],
+['Propan-2-ol (isopropanol)','isopropanol','2-propanol,isopropylalkohol','CC(C)O'],
+['Butan-1-ol','1-butanol','butanol','CCCCO'],
+['Ethan-1,2-diol (glykol)','ethylene glycol','glykol,ethylenglykol','OCCO'],
+['Propan-1,2,3-triol (glycerol)','glycerol','glycerin','OCC(O)CO'],
+['Methanal (formaldehyd)','formaldehyde','formaldehyd,hcho','C=O'],
+['Ethanal (acetaldehyd)','acetaldehyde','acetaldehyd,ch3cho','CC=O'],
+['Propanon (acetone)','acetone','aceton,ch3coch3','CC(C)=O'],
+['Methansyre (myresyre)','formic acid','myresyre,hcooh','OC=O'],
+['Ethansyre (eddikesyre)','acetic acid','eddikesyre,ch3cooh','CC(=O)O'],
+['Propansyre','propanoic acid','propionsyre,ch3ch2cooh,c2h5cooh','CCC(=O)O'],
+['Butansyre (smørsyre)','butyric acid','smørsyre','CCCC(=O)O'],
+['2-hydroxypropansyre (mælkesyre)','lactic acid','mælkesyre','CC(O)C(=O)O'],
+['Ethandisyre (oxalsyre)','oxalic acid','oxalsyre','OC(=O)C(=O)O'],
+['Citronsyre','citric acid','','OC(=O)CC(O)(CC(=O)O)C(=O)O'],
+['Acetat-ion (ethanoat)','acetate','ch3coo-,ethanoat','CC(=O)[O-]'],
+['Ethylethanoat (ethylacetat)','ethyl acetate','ethylacetat','CCOC(C)=O'],
+['Dimethylether','dimethyl ether','ch3och3','COC'],
+['Diethylether','diethyl ether','ether,æter','CCOCC'],
+['Methylamin','methylamine','ch3nh2','CN'],
+['Trimethylamin','trimethylamine','','CN(C)C'],
+['Urinstof (carbamid)','urea','urea,carbamid,co(nh2)2','NC(N)=O'],
+['Formamid','formamide','','NC=O'],
+['Acetonitril','acetonitrile','ch3cn','CC#N'],
+['Glycin','glycine','','NCC(=O)O'],
+['Alanin','alanine','','CC(N)C(=O)O'],
+['Serin','serine','','OCC(N)C(=O)O'],
+['Cystein','cysteine','','SCC(N)C(=O)O'],
+['Valin','valine','','CC(C)C(N)C(=O)O'],
+['Phenylalanin','phenylalanine','fenylalanin','NC(CC1=CC=CC=C1)C(=O)O'],
+['Glukose (glucose)','glucose','druesukker,glucose,c6h12o6','OCC1OC(O)C(O)C(O)C1O'],
+['Fruktose','fructose','frugtsukker,fructose','OCC1(O)OCC(O)C(O)C1O'],
+['Saccharose (sukker)','sucrose','sukker,rørsukker,sakkarose','OCC1OC(OC2(CO)OC(CO)C(O)C2O)C(O)C(O)C1O'],
+['Koffein','caffeine','kaffein,caffein','CN1C=NC2=C1C(=O)N(C)C(=O)N2C'],
+['Acetylsalicylsyre (aspirin)','aspirin','aspirin,kodimagnyl','CC(=O)OC1=CC=CC=C1C(=O)O'],
+['Paracetamol','paracetamol','acetaminophen,panodil','CC(=O)NC1=CC=C(O)C=C1'],
+['Ibuprofen','ibuprofen','ipren','CC(C)CC1=CC=C(C=C1)C(C)C(=O)O'],
+['Nikotin','nicotine','nicotin','CN1CCCC1C1=CN=CC=C1'],
+['Dopamin','dopamine','','NCCC1=CC(O)=C(O)C=C1'],
+['Adrenalin','adrenaline','epinephrin','CNCC(O)C1=CC(O)=C(O)C=C1'],
+['Serotonin','serotonin','','NCCC1=CNC2=C1C=C(O)C=C2'],
+['Ascorbinsyre (C-vitamin)','ascorbic acid','c-vitamin,vitamin c','OCC(O)C1OC(=O)C(O)=C1O'],
+['Kolesterol','cholesterol','cholesterol','CC(C)CCCC(C)C1CCC2C1(CCC3C2CC=C4C3(CCC(C4)O)C)C'],
+['Adenin','adenine','','NC1=NC=NC2=C1N=CN2'],
+['Guanin','guanine','','NC1=NC2=C(N=CN2)C(=O)N1'],
+['Cytosin','cytosine','','NC1=NC(=O)NC=C1'],
+['Thymin','thymine','','CC1=CNC(=O)NC1=O'],
+['Uracil','uracil','','O=C1C=CNC(=O)N1'],
+['Oxiran (ethylenoxid)','ethylene oxide','ethylenoxid','C1CO1'],
+['Trinitrotoluen (TNT)','TNT','tnt','CC1=C(C=C(C=C1[N+](=O)[O-])[N+](=O)[O-])[N+](=O)[O-]'],
+['Nitroglycerin','nitroglycerin','','C(C(CO[N+](=O)[O-])O[N+](=O)[O-])O[N+](=O)[O-]'],
+['Nitromethan','nitromethane','ch3no2','C[N+](=O)[O-]'],
+['Chlormethan','chloromethane','ch3cl,methylchlorid','CCl'],
+['Dichlormethan','dichloromethane','ch2cl2','ClCCl'],
+['Trichlormethan (chloroform)','chloroform','chloroform,chcl3','ClC(Cl)Cl'],
+['Tetrachlormethan','carbon tetrachloride','ccl4','ClC(Cl)(Cl)Cl'],
+['Tetrafluormethan','tetrafluoromethane','cf4','FC(F)(F)F'],
+['Dichlordifluormethan (freon-12)','freon-12','ccl2f2,freon','FC(F)(Cl)Cl'],
+['Methanthiol','methanethiol','ch3sh','CS'],
+['Dimethylsulfoxid (DMSO)','DMSO','dmso','CS(C)=O'],
+['Carbondioxid (kuldioxid)','carbon dioxide','co2,kuldioxid,kultveilte','O=C=O'],
+['Carbonmonoxid (kulilte)','carbon monoxide','co,kulilte,kulmonoxid','[C-]#[O+]'],
+['Carbondisulfid','carbon disulfide','cs2','S=C=S'],
+['Hydrogencyanid (blåsyre)','hydrogen cyanide','hcn,blåsyre','C#N'],
+['Cyanid-ion','cyanide','cn-','[C-]#N'],
+['Carbonsyre (kulsyre)','carbonic acid','h2co3,kulsyre','OC(=O)O'],
+['Carbonat-ion','carbonate','co3 2-,co32-','[O-]C([O-])=O'],
+['Hydrogencarbonat-ion','bicarbonate','hco3-','OC([O-])=O'],
+['Phosgen','phosgene','cocl2','ClC(Cl)=O'],
+['Hydrogensulfid (svovlbrinte)','hydrogen sulfide','h2s,svovlbrinte','S'],
+['Svovldioxid','sulfur dioxide','so2','F:SO2'],
+['Svovltrioxid','sulfur trioxide','so3','F:SO3'],
+['Svovlsyre','sulfuric acid','h2so4','OS(=O)(=O)O'],
+['Sulfat-ion','sulfate','so4 2-,so42-','[O-]S(=O)(=O)[O-]'],
+['Sulfit-ion','sulfite','so3 2-,so32-','F:SO3 2-'],
+['Svovlhexafluorid','sulfur hexafluoride','sf6','F:SF6'],
+['Svovltetrafluorid','sulfur tetrafluoride','sf4','F:SF4'],
+['Thionylchlorid','thionyl chloride','socl2','F:SOCl2'],
+['Salpetersyre','nitric acid','hno3','O[N+](=O)[O-]'],
+['Salpetersyrling','nitrous acid','hno2','ON=O'],
+['Nitrat-ion','nitrate','no3-','[O-][N+](=O)[O-]'],
+['Nitrit-ion','nitrite','no2-','[O-]N=O'],
+['Nitrogenmonoxid','nitric oxide','no','F:NO'],
+['Nitrogendioxid','nitrogen dioxide','no2','F:NO2'],
+['Dinitrogenoxid (lattergas)','nitrous oxide','n2o,lattergas','[N-]=[N+]=O'],
+['Dinitrogentetraoxid','dinitrogen tetroxide','n2o4','[O-][N+](=O)[N+]([O-])=O'],
+['Kvælstof (dinitrogen)','nitrogen','n2,nitrogen','N#N'],
+['Hydrazin','hydrazine','n2h4','NN'],
+['Nitrogentrifluorid','nitrogen trifluoride','nf3','FN(F)F'],
+['Ilt (dioxygen)','oxygen','o2,oxygen','O=O'],
+['Ozon','ozone','o3','[O-][O+]=O'],
+['Brint (dihydrogen)','hydrogen','h2,hydrogen','[H][H]'],
+['Fluor (difluor)','fluorine','f2','FF'],
+['Klor (dichlor)','chlorine','cl2,chlor','ClCl'],
+['Brom (dibrom)','bromine','br2','BrBr'],
+['Iod (diiod)','iodine','i2,jod','II'],
+['Hydrogenfluorid (flussyre)','hydrogen fluoride','hf,flussyre','F'],
+['Hydrogenchlorid (saltsyre)','hydrogen chloride','hcl,saltsyre','Cl'],
+['Hydrogenbromid','hydrogen bromide','hbr','Br'],
+['Hydrogeniodid','hydrogen iodide','hi','I'],
+['Phosphorsyre','phosphoric acid','h3po4,fosforsyre','OP(=O)(O)O'],
+['Phosphat-ion','phosphate','po4 3-,po43-','F:PO4 3-'],
+['Phosphin','phosphine','ph3,fosfin','P'],
+['Phosphortrichlorid','phosphorus trichloride','pcl3','ClP(Cl)Cl'],
+['Phosphorpentachlorid','phosphorus pentachloride','pcl5','F:PCl5'],
+['Phosphorpentafluorid','phosphorus pentafluoride','pf5','F:PF5'],
+['Hexafluorophosphat-ion','hexafluorophosphate','pf6-','F:PF6-'],
+['Phosphorylchlorid','phosphoryl chloride','pocl3','F:POCl3'],
+['Hvidt fosfor (P₄)','white phosphorus','p4,hvidt fosfor','P12P3P1P23'],
+['Svovl (S₈)','sulfur','s8','S1SSSSSSS1'],
+['Bortrifluorid','boron trifluoride','bf3','F:BF3'],
+['Boran','borane','bh3','F:BH3'],
+['Tetrafluoroborat-ion','tetrafluoroborate','bf4-','F:BF4-'],
+['Berylliumchlorid','beryllium chloride','becl2','F:BeCl2'],
+['Berylliumhydrid','beryllium hydride','beh2','F:BeH2'],
+['Aluminiumchlorid','aluminium chloride','alcl3','F:AlCl3'],
+['Silan','silane','sih4','F:SiH4'],
+['Siliciumtetrachlorid','silicon tetrachloride','sicl4','F:SiCl4'],
+['Xenondifluorid','xenon difluoride','xef2','F:XeF2'],
+['Xenontetrafluorid','xenon tetrafluoride','xef4','F:XeF4'],
+['Xenonhexafluorid','xenon hexafluoride','xef6','F:XeF6'],
+['Xenontrioxid','xenon trioxide','xeo3','F:XeO3'],
+['Xenontetraoxid','xenon tetroxide','xeo4','F:XeO4'],
+['Kryptondifluorid','krypton difluoride','krf2','F:KrF2'],
+['Chlortrifluorid','chlorine trifluoride','clf3','F:ClF3'],
+['Chlorpentafluorid','chlorine pentafluoride','clf5','F:ClF5'],
+['Brompentafluorid','bromine pentafluoride','brf5','F:BrF5'],
+['Iodpentafluorid','iodine pentafluoride','if5','F:IF5'],
+['Iodheptafluorid','iodine heptafluoride','if7','F:IF7'],
+['Triiodid-ion','triiodide','i3-','F:I3 -'],
+['Tetrachloroiodat-ion','tetrachloroiodate','icl4-','F:ICl4-'],
+['Chlorat-ion','chlorate','clo3-','F:ClO3-'],
+['Perchlorat-ion','perchlorate','clo4-','F:ClO4-'],
+['Hypochlorit-ion','hypochlorite','clo-','F:ClO-'],
+['Hypochlorsyrling','hypochlorous acid','hclo,hocl','OCl'],
+['Perchlorsyre','perchloric acid','hclo4','F:HClO4'],
+['Chlordioxid','chlorine dioxide','clo2','F:ClO2'],
+['Arsin','arsine','ash3','F:AsH3'],
+['Hydrogenselenid','hydrogen selenide','h2se','F:H2Se'],
+['Natriumchlorid (ionforbindelse)','sodium chloride','nacl,køkkensalt,salt','F:NaCl'],
+['Lithiumfluorid (ionforbindelse)','lithium fluoride','lif','F:LiF'],
+['Siliciumdioxid (molekyle)','silicon dioxide','sio2','F:SiO2']
+];
+const DICT=new Map(), DICT_F=new Map(), DICT_LIST=[];
+function normKey(s){return s.toLowerCase().replace(/\s+/g,' ').trim();}
+function initDict(){
+  for(const [da,en,al,src] of DICT_RAW){
+    const e={da,en,src}; DICT_LIST.push(e);
+    const keys=[da,en,da.replace(/\s*\(.*\)\s*/g,''),...((da.match(/\(([^)]*)\)/)||[])[1]?[da.match(/\(([^)]*)\)/)[1]]:[]),...al.split(',').filter(Boolean)];
+    for(const k of keys){ const nk=normKey(k); if(nk&&!DICT.has(nk)) DICT.set(nk,e); const ns=nk.replace(/\s/g,''); if(ns&&!DICT.has(ns)) DICT.set(ns,e); }
+    try{ const m=buildEntryMol(e,true); const hk=hillKey(countsOf(m),m.charge); e.hill=hk; if(!DICT_F.has(hk)) DICT_F.set(hk,e); }catch(err){ console.warn('Ordbogsfejl',da,err); }
+  }
+}
+function buildEntryMol(e,quick){
+  let m;
+  if(e.src.startsWith('F:')){
+    const c=parseFormulaCandidates(e.src.slice(2))[0];
+    if(quick){ m=newMol(); m.charge=c.charge; for(const el in c.counts) for(let k=0;k<c.counts[el];k++) addAtom(m,el); return m; }
+    m=structureFromFormula(c.counts,c.charge); m.source='Ordbog + automatisk Lewis-struktur';
+  } else { m=parseSMILES(e.src); m.source='Ordbog (SMILES: '+e.src+')'; m.smiles=e.src; }
+  m.name=e.da; m.nameEn=e.en; return m;
+}
+
+/* =====================================================================
+   NAVNGIVNING AF SIMPLE BINÆRE FORBINDELSER
+   ===================================================================== */
+const PREF=['','mono','di','tri','tetra','penta','hexa','hepta','okta','nona','deka'];
+const FIRSTN={H:'hydrogen',C:'carbon',N:'nitrogen',O:'oxygen',S:'svovl',P:'phosphor',Cl:'chlor',Br:'brom',I:'iod',F:'fluor',Si:'silicium',B:'bor',Se:'selen',As:'arsen',Xe:'xenon',Kr:'krypton',Te:'tellur',Sb:'antimon',Ge:'germanium'};
+const ANION={F:'fluorid',Cl:'chlorid',Br:'bromid',I:'iodid',O:'oxid',S:'sulfid',N:'nitrid',P:'phosphid',C:'carbid',H:'hydrid',Se:'selenid',Te:'tellurid'};
+function systematicName(counts,charge){
+  const els=Object.keys(counts); if(charge||els.length!==2) return null;
+  els.sort((a,b)=>enOf(Z_OF[a])-enOf(Z_OF[b]));
+  const [a,b]=els; if(!ANION[b]) return null;
+  const n1=FIRSTN[a]||NAMES[Z_OF[a]-1];
+  let p2=PREF[counts[b]]||String(counts[b]); let root=ANION[b];
+  if(/^[ao]/.test(root)&&/[ao]$/.test(p2)) p2=p2.slice(0,-1);
+  let s=(counts[a]>1?(PREF[counts[a]]||counts[a]):'')+n1+p2+root;
+  if(counts[a]===1&&counts[b]===1) s=n1+(root.startsWith('o')?'mon':'mono')+root;
+  return s[0].toUpperCase()+s.slice(1);
+}
+
+/* =====================================================================
+   INPUT -> MOLEKYLE
+   ===================================================================== */
+function repeatedEl(s){ const toks=s.match(/[A-Z][a-z]?|\d+|[()]/g)||[]; for(let k=1;k<toks.length;k++) if(/^[A-Z]/.test(toks[k])&&toks[k]===toks[k-1]) return true; return false; }
+function looksLikeSMILES(s){
+  if(/[=#\[\]@\/\\%$]/.test(s)) return true;
+  if(/[bcnops]/.test(s.replace(/Cl|Br|Co|Cs|Cn|Sc|Sn|Mn|Zn|In|Rn|Fe|Ge|Ne|Se|Te|Re|Be|He|Ce|Xe|Os|Ho|Po|Np|No|Lr|Nb|Pb|Rb|Tb|Yb|Ac|Tc|Sc|Ca|Na|Ga|Pa|La|Ta|Ba|Li|Si|Ti|Bi|Ni|Ir|Cr|Er|Sr|Fr|Pr|Br|Ar|Kr|Al|Tl|Cl|Am|Cm|Pm|Sm|Tm|Fm|Hg|Mg|Ag|Rg|Es|Cs|As|Ds|Hs|Os|Ru|Lu|Cu|Au|Pu|Eu|Pt|Mt|At|Nh|Rh|Th|Md|Nd|Cd|Gd|Db|Bh|Pd|Sg|Fl|Mc|Lv|Ts|Og|Mo|Ho|Dy|Zr|Hf|Bk|Cf|Rf|Cn|Sb|Nb|Ge/g,'')) ) return true;
+  if(/[A-Z]\d.*[A-Z]\d/.test(s)&&/^[A-Z][a-z]?1/.test(s)) return true;
+  // samme grundstof to gange i træk uden tal (CC, OO, NN) => SMILES
+  const toks=s.match(/[A-Z][a-z]?|\d+|[()]/g)||[];
+  for(let k=1;k<toks.length;k++) if(/^[A-Z]/.test(toks[k])&&toks[k]===toks[k-1]) return true;
+  if(/\)\(/.test(s)) return true;
+  return false;
+}
+function resolveInput(str,mode){
+  const s=str.trim(); if(!s) throw new Error('Skriv et molekyle.');
+  const lk=normKey(s);
+  const finish=(m,extra)=>{ if(extra) m.notes.push(extra); return m; };
+  if(mode==='smiles'||/^smiles:/i.test(s)){ const sm=s.replace(/^smiles:/i,'').trim(); const m=parseSMILES(sm); m.source='SMILES: '+sm; m.smiles=sm; return lookupName(m); }
+  if(mode!=='formula'){
+    if(DICT.has(lk)) return buildEntryMol(DICT.get(lk));
+    const ns=lk.replace(/\s/g,''); if(DICT.has(ns)) return buildEntryMol(DICT.get(ns));
+    const ei=NAMES.indexOf(lk); if(ei>=0){ const m=newMol(); addAtom(m,SYMS[ei]); singleAtomDots(m); m.name=NAMES[ei][0].toUpperCase()+NAMES[ei].slice(1)+'-atom'; m.source='Grundstof'; return m; }
+    if(mode==='name') throw new Error('Kender ikke navnet "'+s+'". Prøv en formel eller SMILES.');
+  }
+  if(mode!=='formula'&&looksLikeSMILES(s)){
+    try{ const m=parseSMILES(s); m.source='SMILES: '+s; m.smiles=s; return lookupName(m); }catch(e){ if(/[=#\[\]@]/.test(s)||repeatedEl(s)||/[a-z]/.test(s.replace(/[A-Z][a-z]/g,''))) throw e; }
+  }
+  const cands=parseFormulaCandidates(s);
+  if(!cands.length){
+    if(mode!=='formula'){ try{ const m=parseSMILES(s); m.source='SMILES: '+s; m.smiles=s; return lookupName(m);}catch(e){} }
+    throw new Error('Kunne ikke forstå "'+s+'". Brug fx H2O, SO4 2-, NH4+, et navn eller SMILES.');
+  }
+  for(const c of cands){ const hk=hillKey(c.counts,c.charge); if(DICT_F.has(hk)){ const m=buildEntryMol(DICT_F.get(hk)); if(Object.keys(c.counts).length>0){ const nAt=Object.values(c.counts).reduce((a,b)=>a+b,0); if(nAt>4&&!DICT.has(lk)) m.notes.push('Formlen '+formulaText(c.counts,c.charge)+' kan have flere isomerer – her vises '+m.name.toLowerCase()+'. Skriv SMILES for en bestemt isomer.'); } return m; } }
+  let best=null,bs=Infinity,bc=null;
+  for(const c of cands){
+    const n=Object.values(c.counts).reduce((a,b)=>a+b,0); if(n>60) throw new Error('For stort til automatisk opbygning – brug SMILES.');
+    const m=structureFromFormula(c.counts,c.charge); if(!m) continue;
+    const sc=m.lewisScore||0; if(sc<bs-1e-9){bs=sc;best=m;bc=c;}
+  }
+  if(!best) throw new Error('Kunne ikke finde en struktur for '+s);
+  best.source='Automatisk ud fra formel (VSEPR + Lewis-søgning)';
+  const nm=systematicName(bc.counts,bc.charge);
+  best.name=best.atoms.length===1?(NAMES[best.atoms[0].Z-1][0].toUpperCase()+NAMES[best.atoms[0].Z-1].slice(1)+(best.charge?'-ion':'-atom')):(nm||formulaText(bc.counts,bc.charge));
+  if(nm) best.nameNote='systematisk navn';
+  const heavy=best.atoms.filter(a=>a.Z>1).length;
+  if(best.atoms.length>1&&heavy>2&&!best.atoms.some(a=>a.nb.length===best.atoms.length-1)) best.notes.push('Strukturen er gættet ud fra formlen. Hvis du vil se en bestemt isomer, så skriv den som SMILES.');
+  if(bs>=10) best.notes.push('Der findes ingen Lewis-struktur med fuld oktet på alle atomer. Den viste er den bedste, programmet kunne finde.');
+  return best;
+}
+function lookupName(m){
+  const hk=hillKey(countsOf(m),m.charge);
+  if(!m.name){ m.name=formulaText(countsOf(m),m.charge); }
+  const e=DICT_F.get(hk); if(e&&e.src&&!e.src.startsWith('F:')){ try{ const ref=parseSMILES(e.src); if(sameGraph(ref,m)) m.name=e.da; }catch(err){} }
+  return m;
+}
+function sameGraph(a,b){ if(a.atoms.length!==b.atoms.length||a.bonds.length!==b.bonds.length) return false;
+  const sig=m=>{ buildAdj(m); return m.atoms.map(x=>x.el+':'+x.nb.map(n=>m.atoms[n.j].el+n.o).sort().join('')).sort().join('|'); }; return sig(a)===sig(b); }
+
+/* =====================================================================
+   VSEPR-GEOMETRI (3D)
+   ===================================================================== */
+function domainsOf(m,i){ const a=m.atoms[i]; const nb=a.nb.length; const metal=isTM(a.Z)||(!NONMETAL.has(a.el)&&nb>0&&groupOf(a.Z)<=2);
+  const lp=metal?0:a.lp; const rad=(!metal&&a.rad&&nb>=2)?1:0; return {nb,lp,rad,L:lp+rad,sn:nb+lp+rad}; }
+function idealDirs(sn){
+  const c=k=>Math.cos(k), s=k=>Math.sin(k), P=Math.PI;
+  switch(sn){
+    case 0: return [];
+    case 1: return [[0,0,1]];
+    case 2: return [[0,0,1],[0,0,-1]];
+    case 3: return [0,1,2].map(k=>[c(k*2*P/3),s(k*2*P/3),0]);
+    case 4: {const q=1/Math.sqrt(3);return [[q,q,q],[q,-q,-q],[-q,q,-q],[-q,-q,q]];}
+    case 5: return [[1,0,0],[c(2*P/3),s(2*P/3),0],[c(4*P/3),s(4*P/3),0],[0,0,1],[0,0,-1]];
+    case 6: return [[0,0,1],[0,0,-1],[1,0,0],[-1,0,0],[0,1,0],[0,-1,0]];
+    case 7: return [[0,0,1],[0,0,-1],...[0,1,2,3,4].map(k=>[c(k*2*P/5),s(k*2*P/5),0])];
+    default: return fibDirs(sn);
+  }
+}
+function targetAngle(d,si,sj,ideal){
+  const {sn,lp,rad,L}=d;
+  if(L===0) return ideal;
+  if(sn===4) return 109.47-2.5*lp-1.5*rad;
+  if(sn===3) return (rad&&!lp)?134:118;
+  if(sn===5){ if(L===1){ if(ideal>170) return 173; if(ideal>100) return 102; return 87.5; } if(L===2){ if(ideal>170) return 175; return 87.5; } return ideal; }
+  if(sn===6&&L===1){ if(si===1||sj===1) return 85; if(ideal>170) return 170; return 89.6; }
+  return ideal;
+}
+function bondLen(Za,Zb,o){
+  let d=rcov(Za)+rcov(Zb); if(Za>1&&Zb>1) d-=0.05*Math.abs(enOf(Za)-enOf(Zb));
+  return d*(o>=3?0.78:o>=2?0.87:o>1?0.92:1);
+}
+function findRingBonds(m){
+  const n=m.atoms.length, disc=new Array(n).fill(-1), low=new Array(n).fill(0); let t=0; const bridge=new Set();
+  function dfs(u,pk){ disc[u]=low[u]=t++; for(const x of m.atoms[u].nb){ if(x.k===pk) continue; if(disc[x.j]<0){ dfs(x.j,x.k); low[u]=Math.min(low[u],low[x.j]); if(low[x.j]>disc[u]) bridge.add(x.k);} else low[u]=Math.min(low[u],disc[x.j]); } }
+  for(let i=0;i<n;i++) if(disc[i]<0) dfs(i,-1);
+  const ring=new Set(); m.bonds.forEach((b,k)=>{ if(!bridge.has(k)) ring.add(k); }); return ring;
+}
+function smallRings(m,maxSize){
+  const rings=[]; const seen=new Set();
+  m.bonds.forEach((b,k)=>{ if(!m.ringBonds.has(k)) return;
+    const prev=new Map([[b.a,-1]]); let fr=[b.a]; let found=false;
+    for(let d=0;d<maxSize&&!found;d++){ const nx=[]; for(const u of fr) for(const x of m.atoms[u].nb){ if(x.k===k||prev.has(x.j)) continue; prev.set(x.j,u); if(x.j===b.b){found=true;break;} nx.push(x.j);} if(found) break; fr=nx; }
+    if(!found) return; const cyc=[]; let u=b.b; while(u!==-1){ cyc.push(u); u=prev.get(u); }
+    if(cyc.length>maxSize) return; const key=cyc.slice().sort((x,y)=>x-y).join(','); if(!seen.has(key)){ seen.add(key); rings.push(cyc); } });
+  return rings;
+}
+/* konjugerede (aromatiske) ringe: ens bindingslængder og sp²-heteroatomer */
+function markAromatic(m,info){
+  m.aromB=new Set(); if(!m.ringBonds.size) return;
+  const at=m.atoms; const rings=smallRings(m,7);
+  const pl=i=>info[i].sn===3&&!isTM(at[i].Z);
+  for(const r of rings){
+    if(r.length<5) continue;
+    let ok=true, nPl=0, hetero=[];
+    for(const i of r){ if(pl(i)) nPl++; else if(HETERO.has(at[i].el)&&at[i].lp>=1&&at[i].nb.length<=3) hetero.push(i); else { ok=false; break; } }
+    if(!ok||nPl<r.length-1) continue;
+    let dbl=0; const inR=new Set(r);
+    m.bonds.forEach((b,k)=>{ if(inR.has(b.a)&&inR.has(b.b)&&b.o>=2) dbl++; });
+    if(dbl<2) continue;
+    m.bonds.forEach((b,k)=>{ if(inR.has(b.a)&&inR.has(b.b)) m.aromB.add(k); });
+    for(const h of hetero){ const d=info[h]; if(d.lp>=1){ info[h]={...d,lp:d.lp-1,L:d.L-1,sn:d.sn-1,aromLP:true}; } }
+  }
+}
+function embed3D(m){
+  buildAdj(m);
+  const n=m.atoms.length; const pos=new Array(n).fill(null);
+  const info=m.atoms.map((a,i)=>domainsOf(m,i));
+  m.info=info;
+  if(n===1){ pos[0]=[0,0,0]; m.pos=pos; m.lpDirs=[[]]; m.atoms[0].slots=null; return; }
+  const ringB=findRingBonds(m); m.ringBonds=ringB;
+  markAromatic(m,info);
+  const bondK=(i,j)=>{const x=m.atoms[i].nb.find(q=>q.j===j);return x?x.k:-1;};
+  const isRingB=(i,j)=>ringB.has(bondK(i,j));
+  const parent=new Array(n).fill(-1); const slotDirs=new Array(n).fill(null); const slotsOf=new Array(n).fill(null);
+  const placedOrder=[];
+  // vælg rod: flest naboer, tungt atom
+  const comps=[]; const seenC=new Array(n).fill(false);
+  for(let s0=0;s0<n;s0++){ if(seenC[s0]) continue; const comp=[]; const st=[s0]; seenC[s0]=true; while(st.length){const u=st.pop();comp.push(u);for(const x of m.atoms[u].nb) if(!seenC[x.j]){seenC[x.j]=true;st.push(x.j);}} comps.push(comp); }
+  let offsetX=0;
+  for(const comp of comps){
+    let root=comp[0]; for(const i of comp){ const a=m.atoms[i], r=m.atoms[root]; if(a.nb.length>r.nb.length||(a.nb.length===r.nb.length&&a.Z>1&&r.Z===1)) root=i; }
+    pos[root]=[offsetX,0,0];
+    const queue=[root]; placedOrder.push(root);
+    while(queue.length){
+      const A=queue.shift(); const d=info[A]; const sn=Math.max(d.sn,d.nb);
+      let dirs=idealDirs(sn).map(v=>v.slice());
+      const slots=new Array(sn).fill(null); let k=0;
+      for(let t=0;t<d.lp;t++) slots[k++]={t:'lp'};
+      if(d.rad) slots[k++]={t:'rad'};
+      const P=parent[A];
+      const nbs=m.atoms[A].nb.map(x=>x.j);
+      const ordered=[]; if(P>=0) ordered.push(P);
+      const rest=nbs.filter(j=>j!==P&&!pos[j]); rest.sort((a,b)=>((isRingB(A,b)?1:0)-(isRingB(A,a)?1:0))||(m.atoms[b].Z-m.atoms[a].Z));
+      ordered.push(...rest);
+      ordered.push(...nbs.filter(j=>j!==P&&pos[j]&&!rest.includes(j)));
+      for(const j of ordered){ while(k<sn&&slots[k]) k++; if(k<sn) slots[k++]={t:'nb',j}; }
+      if(P>=0){
+        const ps=slots.findIndex(s=>s&&s.t==='nb'&&s.j===P);
+        const u=V.norm(V.sub(pos[P],pos[A]));
+        const R=rotFromTo(dirs[ps],u); dirs=dirs.map(v=>mulMV(R,v));
+        // drejning om bindingsaksen (anti eller cis i ringe)
+        let key=slots.findIndex((s,ix)=>s&&s.t==='nb'&&s.j!==P&&!pos[s.j]);
+        if(key<0) key=slots.findIndex(s=>s&&(s.t==='lp'||s.t==='rad'));
+        if(key>=0&&sn>=3){
+          let G=parent[P];
+          const cisWanted=slots[key].t==='nb'&&isRingB(A,P)&&isRingB(A,slots[key].j);
+          if(G<0||(cisWanted&&!isRingB(P,G))){ const o=m.atoms[P].nb.find(x=>x.j!==A&&pos[x.j]&&(!cisWanted||isRingB(P,x.j)))||m.atoms[P].nb.find(x=>x.j!==A&&pos[x.j]); G=o?o.j:-1; }
+          let ref=null;
+          if(G>=0) ref=V.sub(pos[G],pos[P]);
+          else if(slotDirs[P]){ const o=slotsOf[P].findIndex(s=>s&&(s.t!=='nb'||s.j!==A)); if(o>=0) ref=slotDirs[P][o]; }
+          if(ref){
+            const rp=V.sub(ref,V.mul(u,V.dot(ref,u)));
+            if(V.len(rp)>1e-6){
+              const kd=dirs[key]; const kp=V.sub(kd,V.mul(u,V.dot(kd,u)));
+              const cis=slots[key].t==='nb'&&isRingB(A,P)&&isRingB(A,slots[key].j);
+              const want=cis?V.norm(rp):V.mul(V.norm(rp),-1);
+              const kpn=V.norm(kp);
+              let ang=Math.acos(Math.max(-1,Math.min(1,V.dot(kpn,want))));
+              if(V.dot(V.cross(kpn,want),u)<0) ang=-ang;
+              const R2=rotAxis(u,ang); dirs=dirs.map(v=>mulMV(R2,v));
+            }
+          }
+        }
+      } else {
+        // rod: drej så molekylet står pænt
+        const R=mulMM(rotAxis([1,0,0],0.35),rotAxis([0,1,0],0.25)); if(sn!==2) dirs=dirs.map(v=>mulMV(R,v)); else dirs=[[1,0,0],[-1,0,0]];
+      }
+      slotDirs[A]=dirs; slotsOf[A]=slots;
+      slots.forEach((s,ix)=>{ if(!s||s.t!=='nb') return; const j=s.j; if(pos[j]) return;
+        const nbx=m.atoms[A].nb.find(x=>x.j===j); const bo=m.aromB&&m.aromB.has(nbx.k)?1.5:nbx.o;
+        pos[j]=V.add(pos[A],V.mul(dirs[ix],bondLen(m.atoms[A].Z,m.atoms[j].Z,bo))); parent[j]=A; queue.push(j); placedOrder.push(j); });
+    }
+    let mx=-1e9; for(const i of comp) mx=Math.max(mx,pos[i][0]); offsetX=mx+3.5;
+  }
+  m.atoms.forEach((a,i)=>{a.slots=slotsOf[i];a.slotDirs=slotDirs[i];});
+  relax(m,pos,info);
+  // centrér
+  const heavy=m.atoms.map((a,i)=>i).filter(i=>m.atoms[i].Z>1); const use=heavy.length?heavy:m.atoms.map((a,i)=>i);
+  let c=[0,0,0]; for(const i of use) c=V.add(c,pos[i]); c=V.mul(c,1/use.length);
+  for(let i=0;i<n;i++) pos[i]=V.sub(pos[i],c);
+  m.pos=pos;
+  computeLPDirs(m);
+}
+function relax(m,pos,info){
+  const n=m.atoms.length; const at=m.atoms;
+  const bonds=m.bonds.map((b,k)=>({a:b.a,b:b.b,d0:bondLen(at[b.a].Z,at[b.b].Z,m.aromB&&m.aromB.has(k)?(b.o===1&&(HETERO.has(at[b.a].el)||HETERO.has(at[b.b].el))?1.2:1.5):b.o)}));
+  const bl=(i,j)=>{const b=bonds.find(q=>(q.a===i&&q.b===j)||(q.a===j&&q.b===i));return b?b.d0:1.5;};
+  const adj=at.map(a=>new Set(a.nb.map(x=>x.j)));
+  const angles=[]; const excl=new Set(); const key=(i,j)=>i<j?i*100000+j:j*100000+i;
+  for(const b of m.bonds) excl.add(key(b.a,b.b));
+  for(let A=0;A<n;A++){
+    const nb=at[A].nb.map(x=>x.j); if(nb.length<2) continue;
+    const slots=at[A].slots, dirs=at[A].slotDirs; const d=info[A];
+    const local=[]; let small=false;
+    for(let p=0;p<nb.length;p++) for(let q=p+1;q<nb.length;q++){
+      const i=nb[p], j=nb[q];
+      let si=-1,sj=-1; if(slots){ si=slots.findIndex(s=>s&&s.t==='nb'&&s.j===i); sj=slots.findIndex(s=>s&&s.t==='nb'&&s.j===j); }
+      let ideal=109.47; if(si>=0&&sj>=0) ideal=V.angle(dirs[si],dirs[sj]);
+      let th=targetAngle(d,si,sj,ideal); let ring=0;
+      if(adj[i].has(j)){ th=60; ring=3; }
+      else { let four=false; for(const k of adj[i]) if(k!==A&&adj[j].has(k)) {four=true;break;}
+        if(four){ th=90; ring=4; }
+        else { let five=false; for(const k of adj[i]){ if(k===A||k===j) continue; for(const l of adj[j]){ if(l===A||l===i||l===k) continue; if(adj[k].has(l)){five=true;break;} } if(five) break; }
+          if(five){ th=108; ring=5; } } }
+      if(ring===3||ring===4) small=true;
+      local.push({i,j,th,ring});
+    }
+    if(small){ // præcise vinkler for substituenter på atomer i 3- og 4-ringe
+      const Rs=[...new Set(local.filter(g=>g.ring===3||g.ring===4).flatMap(g=>[g.i,g.j]))]; const Os=nb.filter(x=>!Rs.includes(x));
+      const thOf=(i,j)=>{ const g=local.find(q=>(q.i===i&&q.j===j)||(q.i===j&&q.j===i)); return g?g.th:109.47; };
+      const cs=(a)=>Math.cos(a*Math.PI/180);
+      let rv=null; if(Rs.length===3){ const c12=cs(thOf(Rs[0],Rs[1])), c13=cs(thOf(Rs[0],Rs[2])), c23=cs(thOf(Rs[1],Rs[2]));
+          const r1=[1,0,0], r2=[c12,Math.sqrt(Math.max(1e-9,1-c12*c12)),0]; const y3=(c23-c12*c13)/r2[1]; const r3=[c13,y3,Math.sqrt(Math.max(0,1-c13*c13-y3*y3))]; rv=[r1,r2,r3]; }
+        else if(Rs.length===2){ const t=thOf(Rs[0],Rs[1])*Math.PI/180; rv=[[1,0,0],[Math.cos(t),Math.sin(t),0]]; }
+      let ov=null;
+      if(rv&&Os.length===1){ ov=[V.mul(V.norm(rv.reduce((a,b)=>V.add(a,b),[0,0,0])),-1)]; }
+      else if(rv&&rv.length===2&&Os.length===2){ const bsec=V.norm(V.add(rv[0],rv[1])); const nn=V.norm(V.cross(rv[0],rv[1])); const beta=(local.some(g=>g.ring===3)?115:112)/2*Math.PI/180;
+        ov=[V.add(V.mul(bsec,-Math.cos(beta)),V.mul(nn,Math.sin(beta))),V.add(V.mul(bsec,-Math.cos(beta)),V.mul(nn,-Math.sin(beta)))]; }
+      if(ov){ for(const g of local){ if(g.ring) continue; const ui=Rs.indexOf(g.i)>=0?rv[Rs.indexOf(g.i)]:ov[Os.indexOf(g.i)]; const uj=Rs.indexOf(g.j)>=0?rv[Rs.indexOf(g.j)]:ov[Os.indexOf(g.j)];
+          if(ui&&uj){ g.th=V.angle(ui,uj); g.exact=true; } } }
+    }
+    for(const g of local){
+      if(g.ring===3){ excl.add(key(g.i,g.j)); continue; } // 1-3 er her en binding
+      const a=bl(A,g.i), b=bl(A,g.j); const d13=Math.sqrt(a*a+b*b-2*a*b*Math.cos(g.th*Math.PI/180));
+      // i atomer med 3- eller 4-ringe er de øvrige vinkler kun nedre grænser
+      angles.push({i:g.i,j:g.j,d0:d13,k:0.5,one:small&&g.ring===0&&!g.exact}); excl.add(key(g.i,g.j));
+    }
+  }
+  // planaritet over bindinger mellem trigonalt plane (sp²) atomer: 1-4-afstande for cis/trans
+  const planar=i=>info[i].sn===3&&info[i].nb>=2&&!isTM(at[i].Z);
+  const angOf=(A,i,j)=>{ const g=angles.find(x=>(x.i===i&&x.j===j)||(x.i===j&&x.j===i)); if(!g) return 120; const a=bl(A,i),b=bl(A,j); const c=(a*a+b*b-g.d0*g.d0)/(2*a*b); return Math.acos(Math.max(-1,Math.min(1,c)))*180/Math.PI; };
+  const shareRing=(i,j,A,B)=>{ // sti i->j uden om A og B med højst 5 bindinger
+    const seen=new Set([A,B,i]); let fr=[i];
+    for(let d=0;d<5;d++){ const nx=[]; for(const u of fr) for(const w of adj[u]){ if(w===j) return true; if(!seen.has(w)){seen.add(w);nx.push(w);} } fr=nx; }
+    return false; };
+  const ringBondAB=(A,B)=>{ const x=at[A].nb.find(q=>q.j===B); return x&&m.ringBonds&&m.ringBonds.has(x.k); };
+  const vols=[];
+  for(let A=0;A<n;A++){ if(!planar(A)) continue; const nb=[...adj[A]]; if(nb.length===3) vols.push([A,nb[0],nb[1],nb[2]]); }
+  for(const bd of m.bonds){ const A=bd.a,B=bd.b; if(!planar(A)||!planar(B)) continue;
+    const c=bl(A,B); for(const i0 of adj[A]) if(i0!==B) for(const j0 of adj[B]) if(j0!==A&&j0!==i0) vols.push([A,B,i0,j0]); const Is=[...adj[A]].filter(x=>x!==B), Js=[...adj[B]].filter(x=>x!==A);
+    let ref=null;
+    if(ringBondAB(A,B)){ for(const i of Is){ for(const j of Js){ if(i!==j&&shareRing(i,j,A,B)){ref=[i,j];break;} } if(ref) break; } }
+    for(const i of Is){ for(const j of Js){ if(j===i||adj[i].has(j)) continue;
+      const t1=angOf(A,i,B)*Math.PI/180, t2=angOf(B,A,j)*Math.PI/180; const a=bl(A,i), b=bl(B,j);
+      const ix=a*Math.cos(t1), iy=a*Math.sin(t1); const jx=c-b*Math.cos(t2), jyc=b*Math.sin(t2);
+      const dc=Math.hypot(jx-ix,jyc-iy), dt=Math.hypot(jx-ix,-jyc-iy);
+      let cis;
+      if(ref){ cis=((i===ref[0])===(j===ref[1])); }
+      else { const u=V.sub(pos[i],pos[A]), w=V.sub(pos[j],pos[B]), ax=V.norm(V.sub(pos[B],pos[A]));
+        const up=V.sub(u,V.mul(ax,V.dot(u,ax))), wp=V.sub(w,V.mul(ax,V.dot(w,ax))); cis=V.dot(up,wp)>0; }
+      const kk=key(i,j); if(excl.has(kk)) continue;
+      angles.push({i,j,d0:cis?dc:dt,k:0.35,one:false}); excl.add(kk); } } }
+  const nbPairs=[]; for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) if(!excl.has(key(i,j))){ const dmin=0.75*(rcov(at[i].Z)+rcov(at[j].Z)+1.6); nbPairs.push({i,j,dmin}); }
+  const N3=n*3;
+  let wV=1, wN=1;
+  function energy(P,G){
+    let E=0; if(G) G.fill(0);
+    const term=(i,j,d0,k,one,rep)=>{ const dx=P[j*3]-P[i*3],dy=P[j*3+1]-P[i*3+1],dz=P[j*3+2]-P[i*3+2]; const d=Math.sqrt(dx*dx+dy*dy+dz*dz)||1e-6; let x=d-d0;
+      if(one&&x>0) return; if(rep&&x>0) return; E+=k*x*x; if(G){ const f=2*k*x/d; G[i*3]-=f*dx;G[i*3+1]-=f*dy;G[i*3+2]-=f*dz;G[j*3]+=f*dx;G[j*3+1]+=f*dy;G[j*3+2]+=f*dz; } };
+    for(const b of bonds) term(b.a,b.b,b.d0,1.0,false,false);
+    for(const g of angles) term(g.i,g.j,g.d0,g.k,g.one,false);
+    for(const q of nbPairs) term(q.i,q.j,q.dmin,0.3*wN,false,true);
+    if(wV>0) for(const v of vols){ const a=v[0]*3,b=v[1]*3,c=v[2]*3,d=v[3]*3;
+      const ux=P[b]-P[a],uy=P[b+1]-P[a+1],uz=P[b+2]-P[a+2], vx=P[c]-P[a],vy=P[c+1]-P[a+1],vz=P[c+2]-P[a+2], wx=P[d]-P[a],wy=P[d+1]-P[a+1],wz=P[d+2]-P[a+2];
+      const cx=vy*wz-vz*wy, cy=vz*wx-vx*wz, cz=vx*wy-vy*wx; const Vv=ux*cx+uy*cy+uz*cz; const kv=0.6*wV; E+=kv*Vv*Vv;
+      if(G){ const f=2*kv*Vv;
+        const gb=[cx,cy,cz], gc=[wy*uz-wz*uy,wz*ux-wx*uz,wx*uy-wy*ux], gd=[uy*vz-uz*vy,uz*vx-ux*vz,ux*vy-uy*vx];
+        for(let t=0;t<3;t++){ G[b+t]+=f*gb[t]; G[c+t]+=f*gc[t]; G[d+t]+=f*gd[t]; G[a+t]-=f*(gb[t]+gc[t]+gd[t]); } } }
+    return E;
+  }
+  function minimize(P,iters){
+    const G=new Float64Array(N3), T=new Float64Array(N3), GT=new Float64Array(N3);
+    let E=energy(P,G); let step=0.02;
+    for(let it=0;it<iters;it++){
+      let gmax=0; for(let k=0;k<N3;k++) gmax=Math.max(gmax,Math.abs(G[k]));
+      if(gmax<1e-7) break;
+      const sc=Math.min(step,0.25/gmax);
+      for(let k=0;k<N3;k++) T[k]=P[k]-sc*G[k];
+      const Et=energy(T,GT);
+      if(Et<=E){ P.set(T); G.set(GT); E=Et; step*=1.15; } else { step*=0.5; if(step<1e-9) break; }
+    }
+    return E;
+  }
+  const P0=new Float64Array(N3); for(let i=0;i<n;i++){ P0[i*3]=pos[i][0];P0[i*3+1]=pos[i][1];P0[i*3+2]=pos[i][2]; }
+  const hasRing=m.ringBonds&&m.ringBonds.size>0;
+  const iters=n<40?3000:n<100?1800:700;
+  const starts=hasRing?(n<60?10:n<120?6:2):1;
+  let best=null,bestE=Infinity;
+  const flatten=(Q)=>{ const pts=[]; for(let i=0;i<n;i++) pts.push([Q[i*3],Q[i*3+1],Q[i*3+2]]); const ev=pcaEig(pts); const nr=ev.vecs[2]; const R=new Float64Array(Q);
+    for(let i=0;i<n;i++){ const d=V.dot(V.sub(pts[i],ev.c),nr); R[i*3]-=nr[0]*d; R[i*3+1]-=nr[1]*d; R[i*3+2]-=nr[2]*d; } return R; };
+  const mdsStart=()=>{ // klassisk MDS på topologiske afstande
+    const D=new Float64Array(n*n).fill(1e9);
+    for(let i=0;i<n;i++){ D[i*n+i]=0; const dist=new Array(n).fill(-1), len=new Array(n).fill(0); dist[i]=0; const q=[i];
+      while(q.length){ const u=q.shift(); for(const x of at[u].nb){ if(dist[x.j]<0){ dist[x.j]=dist[u]+1; len[x.j]=len[u]+bl(u,x.j); q.push(x.j);} } }
+      for(let j=0;j<n;j++){ const k=dist[j]; D[i*n+j]=k<0?10:k===0?0:k===1?len[j]:len[j]*(k===2?0.82:0.78); } }
+    const B=new Float64Array(n*n); const rm=new Float64Array(n); let tm=0;
+    for(let i=0;i<n;i++) for(let j=0;j<n;j++){ const d2=D[i*n+j]*D[i*n+j]; B[i*n+j]=d2; rm[i]+=d2/n; tm+=d2/(n*n); }
+    for(let i=0;i<n;i++) for(let j=0;j<n;j++) B[i*n+j]=-0.5*(B[i*n+j]-rm[i]-rm[j]+tm);
+    const vecs=[]; const out=new Float64Array(N3); const rng=mulberry32(99);
+    for(let e=0;e<3;e++){ let v=new Float64Array(n); for(let i=0;i<n;i++) v[i]=rng()-0.5; let lam=0;
+      for(let it=0;it<150;it++){ for(const w of vecs){ let d=0; for(let i=0;i<n;i++) d+=v[i]*w[i]; for(let i=0;i<n;i++) v[i]-=d*w[i]; }
+        const nv=new Float64Array(n); for(let i=0;i<n;i++){ let sacc=0; for(let j=0;j<n;j++) sacc+=B[i*n+j]*v[j]; nv[i]=sacc; }
+        let L=0; for(let i=0;i<n;i++) L+=nv[i]*nv[i]; L=Math.sqrt(L)||1; lam=L; for(let i=0;i<n;i++) v[i]=nv[i]/L; }
+      vecs.push(v); const sc=Math.sqrt(Math.max(lam,1e-6)); for(let i=0;i<n;i++) out[i*3+e]=v[i]*sc+(rng()-0.5)*0.05; }
+    return out; };
+  const total=hasRing?starts+3:1;
+  for(let s=0;s<total;s++){
+    const rng=mulberry32(1000+s*7919); let P;
+    if(s===starts+2){ P=mdsStart(); }
+    else if(s>=starts){ P=flatten(s===starts?P0:best); for(let k=0;k<N3;k++) P[k]+=(rng()-0.5)*0.03; }
+    else { P=new Float64Array(P0); const amp=s===0?0.02:0.5+0.15*s; for(let k=0;k<N3;k++) P[k]+=(rng()-0.5)*amp; }
+    wV=0; wN=0.05; minimize(P,Math.floor(iters/2)); wV=1; wN=1;
+    const E=minimize(P,iters);
+    if(E<bestE-1e-9){bestE=E;best=P;}
+    if(bestE<1e-4&&s<starts) s=starts-1;
+  }
+  for(let i=0;i<n;i++){ pos[i][0]=best[i*3];pos[i][1]=best[i*3+1];pos[i][2]=best[i*3+2]; }
+  m.strain=bestE;
+}
+function computeLPDirs(m){
+  const at=m.atoms, pos=m.pos;
+  m.lpDirs=at.map((a,i)=>{
+    const d=m.info[i]; const cnt=a.lp+(a.rad?1:0); if(!cnt) return [];
+    const bd=a.nb.map(x=>V.norm(V.sub(pos[x.j],pos[i])));
+    let u=[];
+    if(a.slots&&a.slotDirs){ a.slots.forEach((s,ix)=>{ if(s&&(s.t==='lp'||s.t==='rad')) u.push(a.slotDirs[ix].slice()); }); }
+    while(u.length<cnt) u.push(fibDirs(cnt+3)[u.length]);
+    u=u.slice(0,cnt);
+    if(bd.length===0&&cnt>0) return idealDirs(cnt).map(v=>v);
+    for(let it=0;it<250;it++){
+      for(let k=0;k<u.length;k++){
+        let f=[0,0,0];
+        for(const b of bd){ const r=V.sub(u[k],b); const L=V.len(r)+1e-3; f=V.add(f,V.mul(r,1/(L*L*L))); }
+        for(let q=0;q<u.length;q++){ if(q===k) continue; const r=V.sub(u[k],u[q]); const L=V.len(r)+1e-3; f=V.add(f,V.mul(r,1.3/(L*L*L))); }
+        const ft=V.sub(f,V.mul(u[k],V.dot(f,u[k])));
+        const L=V.len(ft); const st=Math.min(0.05,0.05/(L+1e-9))*L;
+        if(L>1e-9) u[k]=V.norm(V.add(u[k],V.mul(ft,st/L)));
+      }
+    }
+    return u;
+  });
+}
+
+/* =====================================================================
+   FORMER / ANALYSE
+   ===================================================================== */
+const SHAPES={
+ '2,0':['lineær','linear','lineær','sp','180°'],
+ '3,0':['trigonal plan','trigonal planar','trigonal plan','sp²','120°'],
+ '3,1':['vinklet (bøjet)','bent','trigonal plan','sp²','< 120°'],
+ '4,0':['tetraedrisk','tetrahedral','tetraedrisk','sp³','109,5°'],
+ '4,1':['trigonal pyramidal','trigonal pyramidal','tetraedrisk','sp³','< 109,5° (≈ 107°)'],
+ '4,2':['vinklet (bøjet)','bent','tetraedrisk','sp³','< 109,5° (≈ 104,5°)'],
+ '5,0':['trigonal bipyramidal','trigonal bipyramidal','trigonal bipyramidal','sp³d','90°, 120°, 180°'],
+ '5,1':['vippeform (forvrænget tetraeder)','seesaw','trigonal bipyramidal','sp³d','< 90°, < 120°'],
+ '5,2':['T-formet','T-shaped','trigonal bipyramidal','sp³d','< 90°'],
+ '5,3':['lineær','linear','trigonal bipyramidal','sp³d','180°'],
+ '6,0':['oktaedrisk','octahedral','oktaedrisk','sp³d²','90°, 180°'],
+ '6,1':['kvadratisk pyramidal','square pyramidal','oktaedrisk','sp³d²','< 90°'],
+ '6,2':['kvadratisk plan','square planar','oktaedrisk','sp³d²','90°, 180°'],
+ '6,3':['T-formet','T-shaped','oktaedrisk','sp³d²','90°'],
+ '6,4':['lineær','linear','oktaedrisk','sp³d²','180°'],
+ '7,0':['pentagonal bipyramidal','pentagonal bipyramidal','pentagonal bipyramidal','sp³d³','72°, 90°'],
+ '7,1':['forvrænget oktaedrisk (pentagonal pyramidal)','distorted octahedral','pentagonal bipyramidal','sp³d³','≈ 72°, 90°'],
+ '7,2':['pentagonal plan','pentagonal planar','pentagonal bipyramidal','sp³d³','72°'],
+ '8,0':['kvadratisk antiprismatisk','square antiprismatic','kvadratisk antiprisme','sp³d⁴','—']
+};
+function axe(nb,L){ return 'AX'+(nb>1?subd(nb):'')+(L?('E'+(L>1?subd(L):'')):''); }
+function analyze(m){
+  const at=m.atoms, pos=m.pos; const res={centers:[],overall:null};
+  const n=at.length;
+  if(n===1){ res.overall={da:'enkelt atom'+(m.charge?' (ion)':''),en:'single atom'}; return res; }
+  at.forEach((a,i)=>{
+    const d=m.info[i]; if(d.nb<2) return;
+    const key=d.sn+','+d.L; const sh=SHAPES[key];
+    const angs=[]; for(let p=0;p<a.nb.length;p++) for(let q=p+1;q<a.nb.length;q++){ angs.push(V.angle(V.sub(pos[a.nb[p].j],pos[i]),V.sub(pos[a.nb[q].j],pos[i]))); }
+    res.centers.push({i,el:a.el,d,key,sh,angs,nbEls:a.nb.map(x=>at[x.j].el).sort().join('')});
+  });
+  // gruppér ens centre
+  const groups=new Map();
+  for(const c of res.centers){ const k=c.el+'|'+c.key+'|'+c.nbEls; if(!groups.has(k)) groups.set(k,{...c,count:0,all:[] ,idx:[]}); const g=groups.get(k); g.count++; g.all.push(...c.angs); g.idx.push(c.i); }
+  res.groups=[...groups.values()];
+  // samlet form
+  if(n===2) res.overall={da:'lineær (to-atomigt molekyle)',en:'linear (diatomic)'};
+  else if(res.centers.length===1){ const c=res.centers[0]; res.overall={da:c.sh?c.sh[0]:'—',en:c.sh?c.sh[1]:'',center:c}; }
+  else {
+    // lineær / plan test
+    const ev=pcaEig(pos); const lin=ev.vals[1]<0.01&&ev.vals[2]<0.01; const plan=ev.vals[2]<0.01;
+    let main=res.centers.slice().sort((a,b)=>(b.d.nb-a.d.nb)||(b.d.L-a.d.L))[0];
+    res.overall={da:lin?'lineært molekyle':plan?'plant molekyle':'tredimensionelt molekyle med flere centre',en:'',multi:true,main,planar:plan,linear:lin};
+  }
+  // polaritet
+  let mu=[0,0,0];
+  for(const b of m.bonds){ const A=at[b.a],B=at[b.b]; const dEN=enOf(B.Z)-enOf(A.Z); mu=V.add(mu,V.mul(V.norm(V.sub(pos[b.b],pos[b.a])),dEN)); }
+  at.forEach((a,i)=>{ (m.lpDirs[i]||[]).forEach(u=>{ if(m.info[i].nb>=2&&!isTM(a.Z)) mu=V.add(mu,V.mul(u,0.35)); }); });
+  let maxD=0; for(const b of m.bonds) maxD=Math.max(maxD,Math.abs(enOf(at[b.a].Z)-enOf(at[b.b].Z)));
+  res.dipole=V.len(mu); res.maxDEN=maxD;
+  const fcPolar=at.some(a=>a.charge!==0)&&m.charge===0&&V.len(mu)<0.15&&at.length===3&&!symmetricFC(m);
+  res.polar=(V.len(mu)>0.15)||fcPolar;
+  return res;
+}
+function symmetricFC(m){ const ch=m.atoms.map(a=>a.charge); return ch.every(c=>c===0)||(ch[0]===ch[ch.length-1]); }
+function pcaEig(pos){
+  const n=pos.length; let c=[0,0,0]; for(const p of pos) c=V.add(c,p); c=V.mul(c,1/n);
+  const C=[0,0,0,0,0,0,0,0,0]; for(const p0 of pos){ const p=V.sub(p0,c); for(let i=0;i<3;i++) for(let j=0;j<3;j++) C[i*3+j]+=p[i]*p[j]/n; }
+  const vecs=[], vals=[]; let M=C.slice();
+  for(let k=0;k<3;k++){
+    let v=k===0?[1,0.3,0.2]:k===1?[0.2,1,0.3]:[0.3,0.2,1];
+    for(let it=0;it<100;it++){ for(const w of vecs) v=V.sub(v,V.mul(w,V.dot(v,w))); const nv=mulMV(M,v); if(V.len(nv)<1e-12){ break; } v=V.norm(nv); }
+    for(const w of vecs) v=V.sub(v,V.mul(w,V.dot(v,w))); v=V.norm(v);
+    const lam=V.dot(v,mulMV(C,v)); vecs.push(v); vals.push(Math.max(0,lam));
+  }
+  return {vecs,vals,c};
+}
+
+/* =====================================================================
+   LEWIS 2D-LAYOUT
+   ===================================================================== */
+function layout2D(m){
+  const at=m.atoms, n=at.length; const nodes=[];
+  if(n===1){
+    const a=at[0]; nodes.push({x:0,y:0,t:'a',i:0});
+    const sides=[[0,-1],[1,0],[0,1],[-1,0]]; let s=0;
+    const tot=a.lp+a.rad; const singles=a.rad, pairs=a.lp;
+    // Lewis-prikker: først én pr. side, så par
+    const arr=[]; for(let k=0;k<4;k++){ arr.push(k<pairs?2:(k<pairs+singles?1:0)); }
+    arr.forEach((cnt,k)=>{ if(cnt===2) nodes.push({x:sides[k][0]*0.45,y:sides[k][1]*0.45,t:'l',owner:0}); else if(cnt===1) nodes.push({x:sides[k][0]*0.45,y:sides[k][1]*0.45,t:'r',owner:0}); });
+    return nodes;
+  }
+  const ev=pcaEig(m.pos); const e1=ev.vecs[0], e2=ev.vecs[1];
+  const P=m.pos.map(p=>{const q=V.sub(p,ev.c);return [V.dot(q,e1),-V.dot(q,e2)];});
+  let avg=0; for(const b of m.bonds) avg+=Math.hypot(P[b.a][0]-P[b.b][0],P[b.a][1]-P[b.b][1]); avg=(avg/Math.max(1,m.bonds.length))||1;
+  P.forEach((p,i)=>nodes.push({x:p[0]/avg,y:p[1]/avg,t:'a',i}));
+  const rng=mulberry32(7);
+  at.forEach((a,i)=>{
+    const dirs=m.lpDirs[i]||[];
+    for(let k=0;k<a.lp+a.rad;k++){
+      let dx=0,dy=0; if(dirs[k]){ dx=V.dot(dirs[k],e1); dy=-V.dot(dirs[k],e2); }
+      let L=Math.hypot(dx,dy); if(L<0.2){ const t=rng()*Math.PI*2; dx=Math.cos(t);dy=Math.sin(t);L=1; }
+      nodes.push({x:nodes[i].x+0.45*dx/L,y:nodes[i].y+0.45*dy/L,t:k<a.lp?'l':'r',owner:i});
+    }
+  });
+  const N=nodes.length; const iters=N>120?250:N>60?450:800;
+  for(let it=0;it<iters;it++){
+    const fx=new Float64Array(N), fy=new Float64Array(N);
+    for(const b of m.bonds){ const A=nodes[b.a],B=nodes[b.b]; const dx=B.x-A.x,dy=B.y-A.y; const d=Math.hypot(dx,dy)||1e-6; const f=0.5*(d-1)/d; fx[b.a]+=f*dx;fy[b.a]+=f*dy;fx[b.b]-=f*dx;fy[b.b]-=f*dy; }
+    for(let k=n;k<N;k++){ const o=nodes[k].owner; const dx=nodes[k].x-nodes[o].x,dy=nodes[k].y-nodes[o].y; const d=Math.hypot(dx,dy)||1e-6; const f=1.0*(d-0.42)/d; fx[k]-=f*dx;fy[k]-=f*dy;fx[o]+=f*dx*0.2;fy[o]+=f*dy*0.2; }
+    for(let p=0;p<N;p++) for(let q=p+1;q<N;q++){
+      const A=nodes[p],B=nodes[q]; if(A.t!=='a'&&A.owner===q) continue; if(B.t!=='a'&&B.owner===p) continue;
+      let dx=B.x-A.x,dy=B.y-A.y; let d2=dx*dx+dy*dy; if(d2>9) continue; if(d2<1e-6){dx=0.01*(p-q);dy=0.013;d2=dx*dx+dy*dy;}
+      const c=(A.t==='a'&&B.t==='a')?0.10:(A.t==='a'||B.t==='a')?0.05:0.035; const f=c/(d2*Math.sqrt(d2));
+      fx[p]-=f*dx;fy[p]-=f*dy;fx[q]+=f*dx;fy[q]+=f*dy;
+    }
+    const st=0.25*(1-it/iters)+0.02;
+    for(let k=0;k<N;k++){ let mx=fx[k]*st,my=fy[k]*st; const L=Math.hypot(mx,my); if(L>0.1){mx*=0.1/L;my*=0.1/L;} nodes[k].x+=mx;nodes[k].y+=my; }
+  }
+  return nodes;
+}
+
+/* =====================================================================
+   ORBITALER (brintlignende bølgefunktioner)
+   ===================================================================== */
+const HARM=[
+ [{s:'',f:(x,y,z)=>1}],
+ [{s:'x',f:(x,y,z)=>x},{s:'y',f:(x,y,z)=>y},{s:'z',f:(x,y,z)=>z}],
+ [{s:'xy',f:(x,y,z)=>x*y},{s:'xz',f:(x,y,z)=>x*z},{s:'yz',f:(x,y,z)=>y*z},{s:'x²−y²',f:(x,y,z)=>(x*x-y*y)/2},{s:'z²',f:(x,y,z)=>(3*z*z-1)/(2*Math.sqrt(3))}],
+ [{s:'z³',f:(x,y,z)=>z*(5*z*z-3)},{s:'xz²',f:(x,y,z)=>x*(5*z*z-1)},{s:'yz²',f:(x,y,z)=>y*(5*z*z-1)},{s:'xyz',f:(x,y,z)=>x*y*z},{s:'z(x²−y²)',f:(x,y,z)=>z*(x*x-y*y)},{s:'x(x²−3y²)',f:(x,y,z)=>x*(x*x-3*y*y)},{s:'y(3x²−y²)',f:(x,y,z)=>y*(3*x*x-y*y)}]
+];
+(function(){ const D=fibDirs(6000); for(const L of HARM) for(const h of L){ let mx=0,md=[0.58,0.58,0.58],mn=0,nd=null,mall=0; for(const d of D){ const v=h.f(d[0],d[1],d[2]); if(v*v>mall) mall=v*v; if(v>0&&v*v>mx){mx=v*v;md=d;} if(v<0&&v*v>mn){mn=v*v;nd=d;} } h.max=Math.max(mall,1e-9)*1.02; h.dir=md; h.ndir=nd||V.mul(md,-1); } })();
+function radialR(n,l,r){ const rho=2*r/n; const k=n-l-1, a=2*l+1; let L0=1,L1=1+a-rho,L;
+  if(k===0)L=L0; else if(k===1)L=L1; else { for(let j=1;j<k;j++){ const L2=((2*j+1+a-rho)*L1-(j+a)*L0)/(j+1); L0=L1; L1=L2; } L=L1; }
+  return Math.pow(rho,l)*Math.exp(-rho/2)*L; }
+function sampleOrbital(n,l,mi,count,seed,scale){
+  const rng=mulberry32(seed); const rmax=2.5*n*n+10*n; const N=1500; const cdf=new Float64Array(N+1); let acc=0;
+  for(let i=1;i<=N;i++){ const r=(i-0.5)/N*rmax; const R=radialR(n,l,r); acc+=r*r*R*R; cdf[i]=acc; }
+  for(let i=1;i<=N;i++) cdf[i]/=acc;
+  const h=HARM[l][mi]; const pos=[], neg=[]; let rsum=0;
+  for(let k=0;k<count;k++){
+    const u=rng(); let lo=1,hi=N; while(lo<hi){const mid=(lo+hi)>>1; if(cdf[mid]<u) lo=mid+1; else hi=mid;}
+    const fr=(u-cdf[lo-1])/((cdf[lo]-cdf[lo-1])||1); const r=((lo-1)+fr)/N*rmax;
+    let x,y,z,v;
+    for(let t=0;t<2000;t++){ z=2*rng()-1; const ph=2*Math.PI*rng(); const s=Math.sqrt(1-z*z); x=s*Math.cos(ph); y=s*Math.sin(ph); v=h.f(x,y,z); if(rng()*h.max<v*v) break; }
+    const sg=radialR(n,l,r)*v>=0; const rr=r*scale; rsum+=rr;
+    (sg?pos:neg).push(x*rr,y*rr,z*rr);
+  }
+  const arr=new Float32Array(pos.length+neg.length); arr.set(pos,0); arr.set(neg,pos.length);
+  return {pts:arr,split:pos.length/3,count,rmean:rsum/count};
+}
+const atomVizCache=new Map();
+function cloudRadius(Z){ return 0.6+0.5*rcov(Z); }
+function getAtomViz(Z,charge){
+  const key=Z+':'+(charge||0); if(atomVizCache.has(key)) return atomVizCache.get(key);
+  const conf=electronConfig(Z,charge); const nmax=Math.max(...conf.map(o=>o.n),1);
+  const cloudR=cloudRadius(Z); const C=0.43*cloudR;
+  const orbs=[]; let total=0; conf.forEach(o=>total+=2*o.l+1);
+  const per=Math.max(500,Math.min(2500,Math.floor(26000/total)));
+  let seed=Z*1000+7;
+  conf.forEach((o,si)=>{
+    const m=2*o.l+1; const occ=new Array(m).fill(0); let e=o.e;
+    for(let k=0;k<m&&e>0;k++){occ[k]=1;e--;} for(let k=0;k<m&&e>0;k++){occ[k]=2;e--;}
+    for(let k=0;k<m;k++){
+      const scale=C/(o.n*nmax);
+      const valence=(o.n===nmax)||(o.l>=2&&o.e<2*(2*o.l+1))||(o.l===2&&isTM(Z)&&o.n===nmax-1)||(o.l===3&&o.e<14);
+      const smp=sampleOrbital(o.n,o.l,k,valence?per:Math.floor(per*0.7),seed++,scale);
+      const h=HARM[o.l][k];
+      const lab=o.n+SUBL[o.l];
+      const anchorDir=o.l===0?V.norm([0.55,0.65,0.5]):h.dir;
+      const els=[]; for(let q=0;q<occ[k];q++){ const cnt=smp.pts.length/3; els.push({spin:q===0?1:-1,a:(q*97+k*31)%cnt,b:(q*53+k*17+11)%cnt,t:Math.random(),sp:0.6+Math.random()*0.6}); }
+      orbs.push({n:o.n,l:o.l,m:k,sub:h.s,lab,e:occ[k],subshell:o.key,si,pts:smp.pts,split:smp.split,rmean:smp.rmean,rmeanUnit:smp.rmean/0.42,anchor:V.mul(anchorDir,smp.rmean*(o.l===0?1.0:1.15)),els,valence});
+    }
+  });
+  // atomkerne
+  const A=massNumber(Z); const N=A-Z; const nucR=cloudR*0.008*Math.cbrt(A);
+  const nucleonR=nucR/Math.cbrt(A)*1.05;
+  const rng=mulberry32(Z*7+3); const types=[]; for(let i=0;i<Z;i++) types.push(1); for(let i=0;i<N;i++) types.push(0);
+  for(let i=types.length-1;i>0;i--){const j=Math.floor(rng()*(i+1));[types[i],types[j]]=[types[j],types[i]];}
+  const dirs=fibDirs(A); const nucleons=[];
+  for(let i=0;i<A;i++){ const rr=A===1?0:nucR*Math.cbrt((i+0.5)/A)*0.92; const d=dirs[(i*7)%A]; nucleons.push({p:V.mul(d,rr),pr:types[i]}); }
+  const v={Z,charge:charge||0,conf,nmax,cloudR,orbs,A,N,nucR,nucleonR,nucleons,visible:new Set(orbs.map((o,i)=>o.valence?i:-1).filter(i=>i>=0)),solo:-1,hover:-1,time:0};
+  atomVizCache.set(key,v); return v;
+}
+
+/* =====================================================================
+   FÆLLES TILSTAND
+   ===================================================================== */
+const state={mol:null,an:null,lay:null,M:mulMM(rotAxis([1,0,0],0.25),rotAxis([0,1,0],-0.35)),target:[0,0,0],zoom:80,baseZoom:80,
+  sel:-1,focus:-1,anim:null,ar:[0,12,0],opts:{},atomMode:'lobes'};
+</script>
+
+<script>
+'use strict';
+/* =====================================================================
+   UI + RENDERING
+   ===================================================================== */
+const cv=document.getElementById('view'), ctx=cv.getContext('2d');
+const lc=document.getElementById('lewis'), lctx=lc.getContext('2d');
+let W=0,H=0,DPR=1;
+const $=id=>document.getElementById(id);
+function resize(){
+  DPR=Math.min(window.devicePixelRatio||1,2);
+  const r=cv.getBoundingClientRect(); W=r.width; H=r.height; cv.width=Math.round(W*DPR); cv.height=Math.round(H*DPR);
+  const lr=lc.getBoundingClientRect(); lc.width=Math.round(lr.width*DPR); lc.height=Math.round(lr.height*DPR);
+  drawLewis();
+}
+window.addEventListener('resize',resize);
+
+/* --- sprites */
+const spriteCache=new Map();
+function hexToRgb(h){h=h.replace('#','');return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)];}
+function sphereSprite(color){
+  if(spriteCache.has(color)) return spriteCache.get(color);
+  const S=128, c=document.createElement('canvas'); c.width=c.height=S; const g=c.getContext('2d');
+  const [r,gg,b]=hexToRgb(color);
+  const gr=g.createRadialGradient(S*0.36,S*0.32,S*0.04,S*0.5,S*0.5,S*0.5);
+  const L=(k)=>`rgb(${Math.min(255,Math.round(r*k+255*(k>1?k-1:0)))},${Math.min(255,Math.round(gg*k+255*(k>1?k-1:0)))},${Math.min(255,Math.round(b*k+255*(k>1?k-1:0)))})`;
+  gr.addColorStop(0,L(1.45)); gr.addColorStop(0.25,L(1.0)); gr.addColorStop(0.8,L(0.55)); gr.addColorStop(1,L(0.25));
+  g.fillStyle=gr; g.beginPath(); g.arc(S/2,S/2,S/2-1,0,Math.PI*2); g.fill();
+  spriteCache.set(color,c); return c;
+}
+const electronSprite=(()=>{const S=64,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');const gr=g.createRadialGradient(S/2,S/2,0,S/2,S/2,S/2);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(0.18,'rgba(255,250,190,1)');gr.addColorStop(0.45,'rgba(255,220,90,0.45)');gr.addColorStop(1,'rgba(255,200,60,0)');g.fillStyle=gr;g.fillRect(0,0,S,S);return c;})();
+
+/* --- projektion */
+function proj(p){ const M=state.M; const x=p[0]-state.target[0],y=p[1]-state.target[1],z=p[2]-state.target[2];
+  const vx=M[0]*x+M[1]*y+M[2]*z, vy=M[3]*x+M[4]*y+M[5]*z, vz=M[6]*x+M[7]*y+M[8]*z;
+  return {x:W/2+vx*state.zoom,y:H/2-vy*state.zoom,z:vz}; }
+function rotateView(axis,ang){ const ax=axis==='x'?[1,0,0]:axis==='y'?[0,1,0]:[0,0,1]; state.M=mulMM(rotAxis(ax,ang),state.M); }
+function viewToWorld(v){ const M=state.M; return [M[0]*v[0]+M[3]*v[1]+M[6]*v[2],M[1]*v[0]+M[4]*v[1]+M[7]*v[2],M[2]*v[0]+M[5]*v[1]+M[8]*v[2]]; }
+
+function ballR(a){ const st=state.opts.style; if(st==='sf') return rcov(a.Z)*1.0+0.45; if(st==='st') return 0.13; return 0.17+0.27*rcov(a.Z); }
+
+/* =====================================================================
+   INDLÆS MOLEKYLE
+   ===================================================================== */
+function loadInput(){
+  const s=$('inp').value; const mode=$('mode').value; const msg=$('msg');
+  try{
+    const m=resolveInput(s,mode);
+    if(m.atoms.length>250) throw new Error('Molekylet er for stort til denne visning (maks. 250 atomer).');
+    embed3D(m);
+    state.mol=m; state.an=analyze(m); state.lay=layout2D(m);
+    state.sel=-1; state.focus=-1; state.anim=null; state.zoomFocus=-1; state.autoFocus=-1; state._panelAtom=-2; state.orbAlpha=0; state.orbIdx=-1; state.atomLock=-1; state.oaCur=0;
+    msg.innerHTML=m.notes.length?'<span class="note">'+m.notes.join('<br>')+'</span>':'';
+    resetView();
+    renderInfo(); drawLewis(); renderAtomPanel();
+    if(m.atoms.length===1){ state.sel=0; renderAtomPanel(); flyToAtom(0,0.34); }
+  }catch(e){ msg.innerHTML='<span class="err">'+esc(e.message)+'</span>'; }
+}
+function molRadius(){ const m=state.mol; if(!m) return 3; let r=0; m.atoms.forEach((a,i)=>{ r=Math.max(r,V.len(m.pos[i])+ballR(a)); }); return Math.max(r,1.2); }
+function resetView(){
+  state.target=[0,0,0];
+  const r=molRadius(); state.baseZoom=Math.min(W,H)*0.40/r; if(state.mol&&state.mol.atoms.length===1) state.baseZoom=Math.min(W,H)*0.12;
+  state.zoom=state.baseZoom; state.focus=-1; state.anim=null;
+}
+
+/* =====================================================================
+   INFO-PANEL
+   ===================================================================== */
+function renderInfo(){
+  const m=state.mol, an=state.an; if(!m) return;
+  const counts=countsOf(m);
+  const mass=m.atoms.reduce((s,a)=>s+MASS[a.Z-1],0);
+  const totalVE=m.atoms.reduce((s,a)=>s+valE(a.Z),0)-m.charge;
+  const bp=m.bonds.reduce((s,b)=>s+b.o,0), lpn=m.atoms.reduce((s,a)=>s+a.lp,0), rads=m.atoms.reduce((s,a)=>s+a.rad,0);
+  let h='<div class="big">'+esc(m.name)+'</div>';
+  if(m.nameEn) h+='<div class="muted small">'+esc(m.nameEn)+'</div>';
+  if(m.nameNote) h+='<div class="muted small">('+m.nameNote+')</div>';
+  h+='<div style="font-size:18px;margin:4px 0 6px">'+formulaHTML(counts,m.charge)+'</div>';
+  const ov=an.overall;
+  if(ov){
+    h+='<div class="muted small">Molekyleform</div><div class="shape">'+esc(ov.da)+(ov.en&&!ov.multi?' <span class="muted small" style="font-weight:400">('+ov.en+')</span>':'')+'</div>';
+    if(ov.center){ const c=ov.center; h+='<div class="small" style="margin-top:3px">'+axe(c.d.nb,c.d.L)+' · elektronparsgeometri: <b>'+(c.sh?c.sh[2]:'—')+'</b> · hybridisering: <b>'+(c.sh?c.sh[3]:'—')+'</b></div>'; }
+    if(ov.multi&&ov.main&&ov.main.sh) h+='<div class="small" style="margin-top:3px">Største center: '+ov.main.el+' er '+ov.main.sh[0]+' ('+axe(ov.main.d.nb,ov.main.d.L)+')</div>';
+  }
+  h+='<table class="kv" style="margin-top:8px">';
+  h+='<tr><td>Molar masse</td><td>'+fmt(mass,2)+' g/mol</td></tr>';
+  h+='<tr><td>Atomer</td><td>'+m.atoms.length+'</td></tr>';
+  if(m.atoms.length>1){
+    h+='<tr><td>Valenselektroner</td><td>'+totalVE+'</td></tr>';
+    h+='<tr><td>Bindende elektronpar</td><td>'+bp+'</td></tr>';
+    h+='<tr><td>Frie elektronpar</td><td>'+lpn+(rads?(' + '+rads+' uparret elektron (radikal)'):'')+'</td></tr>';
+    h+='<tr><td>Polaritet</td><td>'+(an.polar?'<b style="color:var(--accent2)">polært</b>':'<b style="color:var(--good)">upolært</b>')+' <span class="muted small">(største ΔEN = '+fmt(an.maxDEN,2)+')</span></td></tr>';
+    if(an.maxDEN>=1.7&&m.atoms.length<=3&&m.atoms.some(a=>!NONMETAL.has(a.el))) h+='<tr><td>Bindingstype</td><td>Overvejende <b>ionbinding</b> (ΔEN ≥ 1,7). Her vist som et molekyle.</td></tr>';
+  }
+  h+='</table>';
+  if(an.groups&&an.groups.length){
+    h+='<div class="muted small" style="margin-top:8px">Geometri omkring hvert centralatom (VSEPR):</div>';
+    for(const g of an.groups.slice(0,12)){
+      const angs=g.all.filter(x=>x<179.5||g.d.nb===2||g.all.every(y=>y>=179.5));
+      const show=angs.length?angs:g.all; let mn=Math.min(...show),mx=Math.max(...show);
+      const uniq=[...new Set(show.map(a=>fmt(a,1)))];
+      let angTxt=uniq.length<=4?uniq.join('°, ')+'°':(fmt(mn,1)+'° – '+fmt(mx,1)+'°');
+      h+='<div class="center card" style="padding:7px 9px;margin-top:6px"><b>'+g.el+'</b>'+(g.count>1?' <span class="muted">(×'+g.count+')</span>':'')+' · '+axe(g.d.nb,g.d.L)+' · '+(g.sh?('<b style="color:var(--accent2)">'+g.sh[0]+'</b>'):'—')+
+        '<div class="small muted">Elektronparsgeometri: '+(g.sh?g.sh[2]:'?')+' · '+(g.sh?g.sh[3]:'')+' · ideel vinkel '+(g.sh?g.sh[4]:'?')+'</div>'+
+        '<div class="small">Vinkler i modellen: '+angTxt+'</div></div>';
+    }
+    if(an.groups.length>12) h+='<div class="small muted">… og '+(an.groups.length-12)+' andre typer centre</div>';
+  }
+  h+='<div class="small muted" style="margin-top:8px">Kilde: '+esc(m.source||'')+'</div>';
+  $('info').innerHTML=h;
+  const c=countsOf(m);
+  $('t1').textContent=m.name; $('t2').textContent=ov?ov.da:''; $('t3').textContent=formulaText(c,m.charge);
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+
+/* =====================================================================
+   LEWIS-TEGNING
+   ===================================================================== */
+function drawLewis(){
+  const g=lctx; const w=lc.width/DPR, h=lc.height/DPR; g.setTransform(DPR,0,0,DPR,0,0);
+  g.fillStyle='#0d1428'; g.fillRect(0,0,w,h);
+  const m=state.mol, nodes=state.lay; if(!m||!nodes) return;
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9; for(const nd of nodes){x0=Math.min(x0,nd.x);x1=Math.max(x1,nd.x);y0=Math.min(y0,nd.y);y1=Math.max(y1,nd.y);}
+  const pad=m.charge?44:30;
+  const sc=Math.min((w-2*pad)/Math.max(x1-x0,0.01),(h-2*pad)/Math.max(y1-y0,0.01),m.atoms.length===1?90:64);
+  const ox=w/2-(x0+x1)/2*sc, oy=h/2-(y0+y1)/2*sc;
+  const S=nd=>[ox+nd.x*sc,oy+nd.y*sc];
+  const fs=Math.max(9,Math.min(26,sc*0.40)); const lr=fs*0.62;
+  g.lineCap='round';
+  // bindinger
+  for(const b of m.bonds){
+    const [ax,ay]=S(nodes[b.a]),[bx,by]=S(nodes[b.b]); let dx=bx-ax,dy=by-ay; const L=Math.hypot(dx,dy)||1; dx/=L;dy/=L;
+    const px=-dy,py=dx; const sx=ax+dx*lr, sy=ay+dy*lr, ex=bx-dx*lr, ey=by-dy*lr; if(L<2*lr) continue;
+    const gap=Math.max(2.5,fs*0.2); const offs=b.o===1?[0]:b.o===2?[-gap/2,gap/2]:b.o===3?[-gap,0,gap]:[-1.5*gap,-gap/2,gap/2,1.5*gap];
+    g.strokeStyle='#cfd8ea'; g.lineWidth=Math.max(1.2,fs*0.09);
+    for(const o of offs){ g.beginPath(); g.moveTo(sx+px*o,sy+py*o); g.lineTo(ex+px*o,ey+py*o); g.stroke(); }
+  }
+  // atomer
+  g.textAlign='center'; g.textBaseline='middle';
+  m.atoms.forEach((a,i)=>{ const [x,y]=S(nodes[i]); g.font='600 '+fs+'px system-ui,sans-serif';
+    let col=colorOf(a.el); if(a.el==='C') col='#e6e6e6'; if(a.el==='N') col='#7f9dff'; if(a.el==='O') col='#ff6b6b'; if(a.el==='I') col='#d070ff'; if(a.el==='Br') col='#e06060';
+    if(i===currentAtomIdx()&&m.atoms.length>1){ g.fillStyle='rgba(92,200,255,0.25)'; g.beginPath(); g.arc(x,y,lr*1.15,0,7); g.fill(); }
+    g.fillStyle=col; g.fillText(a.el,x,y+fs*0.03); });
+  // frie elektronpar og radikaler
+  const occupied=m.atoms.map(()=>[]);
+  for(const b of m.bonds){ const A=nodes[b.a],B=nodes[b.b]; occupied[b.a].push(Math.atan2(B.y-A.y,B.x-A.x)); occupied[b.b].push(Math.atan2(A.y-B.y,A.x-B.x)); }
+  g.fillStyle='#ffd166';
+  for(let k=m.atoms.length;k<nodes.length;k++){
+    const nd=nodes[k]; const o=nodes[nd.owner]; const [x,y]=S(o); let dx=nd.x-o.x,dy=nd.y-o.y; const L=Math.hypot(dx,dy)||1; dx/=L;dy/=L;
+    occupied[nd.owner].push(Math.atan2(dy,dx));
+    const cx=x+dx*lr*1.18, cy=y+dy*lr*1.18; const px=-dy,py=dx; const r=Math.max(1.6,fs*0.085); const sp=fs*0.17;
+    if(nd.t==='l'){ g.beginPath(); g.arc(cx+px*sp,cy+py*sp,r,0,7); g.arc(cx-px*sp,cy-py*sp,r,0,7); g.fill(); g.beginPath(); g.arc(cx+px*sp,cy+py*sp,r,0,7); g.fill(); g.beginPath(); g.arc(cx-px*sp,cy-py*sp,r,0,7); g.fill(); }
+    else { g.beginPath(); g.arc(cx,cy,r,0,7); g.fill(); }
+  }
+  // formelle ladninger
+  m.atoms.forEach((a,i)=>{
+    if(!a.charge||m.atoms.length===1) return; const [x,y]=S(nodes[i]);
+    let best=-Math.PI/4,bd=-1; for(let t=0;t<24;t++){ const ang=-Math.PI+t*Math.PI/12; let md=9; for(const o of occupied[i]){ let d=Math.abs(((ang-o+3*Math.PI)%(2*Math.PI))-Math.PI); md=Math.min(md,d);} const bias=-0.05*Math.abs(ang+Math.PI/4); if(md+bias>bd){bd=md+bias;best=ang;} }
+    const cx=x+Math.cos(best)*lr*1.45, cy=y+Math.sin(best)*lr*1.45; const r=fs*0.32;
+    g.strokeStyle=a.charge>0?'#ff9f43':'#5cc8ff'; g.lineWidth=1.2; g.beginPath(); g.arc(cx,cy,r,0,7); g.stroke();
+    g.fillStyle=g.strokeStyle; g.font='700 '+(fs*0.48)+'px system-ui'; g.fillText((Math.abs(a.charge)>1?Math.abs(a.charge):'')+(a.charge>0?'+':'−'),cx,cy+0.5);
+  });
+  // ion-klammer
+  if(m.charge){
+    const bx0=ox+x0*sc-fs*0.9, bx1=ox+x1*sc+fs*0.9, by0=oy+y0*sc-fs*0.9, by1=oy+y1*sc+fs*0.9;
+    g.strokeStyle='#cfd8ea'; g.lineWidth=1.6; const t=8;
+    g.beginPath(); g.moveTo(bx0+t,by0); g.lineTo(bx0,by0); g.lineTo(bx0,by1); g.lineTo(bx0+t,by1); g.stroke();
+    g.beginPath(); g.moveTo(bx1-t,by0); g.lineTo(bx1,by0); g.lineTo(bx1,by1); g.lineTo(bx1-t,by1); g.stroke();
+    g.fillStyle='#cfd8ea'; g.font='700 '+Math.max(12,fs*0.65)+'px system-ui'; g.textAlign='left';
+    g.fillText((Math.abs(m.charge)>1?Math.abs(m.charge):'')+(m.charge>0?'+':'−'),bx1+3,by0+4); g.textAlign='center';
+  }
+}
+
+/* =====================================================================
+   ATOM-PANEL (orbitaler)
+   ===================================================================== */
+/* Atomet i fokus: det man er zoomet ind på > det valgte > det nærmeste midten af skærmen */
+function defaultAtomIdx(){ const m=state.mol; if(!m) return -1; let b=0; m.atoms.forEach((a,i)=>{ const c=m.atoms[b]; if(a.nb.length>c.nb.length||(a.nb.length===c.nb.length&&a.Z>1&&c.Z===1)) b=i; }); return b; }
+function updateAutoFocus(){
+  const m=state.mol; if(!m){ state.autoFocus=-1; return; }
+  let best=-1,bd=1e9; m.atoms.forEach((a,i)=>{ if(a.Z===1&&m.atoms.length>2&&m.atoms.some(x=>x.Z>1)) return; const p=proj(m.pos[i]); const d=Math.hypot(p.x-W/2,p.y-H/2); if(d<bd){bd=d;best=i;} });
+  const cur=state.autoFocus;
+  if(cur>=0&&cur<m.atoms.length&&cur!==best){ const p=proj(m.pos[cur]); const dc=Math.hypot(p.x-W/2,p.y-H/2); if(dc<bd+20) return; }
+  state.autoFocus=best;
+}
+function currentAtomIdx(){ const m=state.mol; if(!m) return -1; const n=m.atoms.length;
+  if(state.orbAlpha>0.05&&state.orbIdx>=0&&state.orbIdx<n) return state.orbIdx;
+  if(state.sel>=0&&state.sel<n) return state.sel;
+  if(state.focus>=0&&state.focus<n) return state.focus;
+  if(state.autoFocus>=0&&state.autoFocus<n) return state.autoFocus;
+  return defaultAtomIdx(); }
+let atomPanelKey='';
+function renderAtomPanel(force){
+  const m=state.mol; const i=currentAtomIdx();
+  if(!m||i<0||i>=m.atoms.length){ if(atomPanelKey!==''){ atomPanelKey=''; $('atomPanel').innerHTML='<span class="muted">Intet molekyle indlæst.</span>'; } return; }
+  const a=m.atoms[i]; const ion=m.atoms.length===1?a.charge:0; const v=getAtomViz(a.Z,ion);
+  const key=i+':'+a.Z+':'+ion+':'+[...v.visible].join(',')+':'+v.solo+':'+(state.orbAlpha>0.05&&state.orbIdx===i)+':'+(state.sel===i);
+  if(!force&&key===atomPanelKey) return; atomPanelKey=key;
+  const Z=a.Z; const conf=v.conf; const nE=Z-ion;
+  let h='<div class="row" style="justify-content:space-between"><div><span class="big">'+a.el+'</span> <span class="muted">'+NAMES[Z-1]+(ion?(' ion ('+sup((Math.abs(ion)>1?Math.abs(ion):'')+(ion>0?'+':'-'))+')'):'')+'</span></div><div class="muted small">atom '+(i+1)+' af '+m.atoms.length+'</div></div>';
+  const how=m.atoms.length===1?'det eneste atom':(state.orbAlpha>0.05&&state.orbIdx===i)?'du er zoomet ind på dette atom':(state.sel===i?'valgt med klik':'tættest på midten af visningen');
+  h+='<div class="small muted" style="margin-top:2px">I fokus: '+how+'. Klik på et andet atom, drej eller zoom for at skifte.</div>';
+  h+='<table class="kv" style="margin-top:6px">';
+  h+='<tr><td>Atomnummer (Z)</td><td>'+Z+'</td></tr>';
+  h+='<tr><td>Kerne</td><td><span style="color:#ff6b6b">'+Z+' protoner</span> + <span style="color:#a9b8d6">'+v.N+' neutroner</span> <span class="muted">(<sup>'+v.A+'</sup>'+a.el+', masse '+fmt(MASS[Z-1],3)+' u)</span></td></tr>';
+  h+='<tr><td>Elektroner</td><td>'+nE+(ion?'':' (neutralt atom)')+'</td></tr>';
+  h+='<tr><td>Periode / gruppe</td><td>'+period(Z)+' / '+groupOf(Z)+'</td></tr>';
+  h+='<tr><td>Elektronegativitet</td><td>'+(EN[Z-1]?fmt(EN[Z-1],2):'—')+'</td></tr>';
+  h+='<tr><td>Valenselektroner</td><td>'+valE(Z)+'</td></tr>';
+  if(m.atoms.length>1){ const d=m.info[i]; const sh=SHAPES[d.sn+','+d.L];
+    h+='<tr><td>I molekylet</td><td>'+d.nb+' binding'+(d.nb===1?'':'er')+', '+a.lp+(a.lp===1?' frit elektronpar':' frie elektronpar')+(a.rad?' + 1 uparret':'')+(a.charge?(', formel ladning '+(a.charge>0?'+':'')+a.charge):'')+(d.nb>=2&&sh?('<br>'+axe(d.nb,d.L)+' – '+sh[0]+' ('+sh[3]+')'):'')+'</td></tr>'; }
+  h+='</table>';
+  h+='<div class="muted small" style="margin-top:8px">Elektronkonfiguration</div><div class="econf">'+configString(conf)+'</div><div class="econf muted">'+configShort(Z,conf)+'</div>';
+  { const valO=v.orbs.filter(o=>o.valence); const nVal=valO.reduce((s,o)=>s+o.e,0); const valSub=[...new Set(valO.map(o=>o.subshell))];
+    const shells=new Map(); conf.forEach(o=>shells.set(o.n,(shells.get(o.n)||0)+o.e));
+    h+='<div class="card" style="margin-top:8px;border-color:#6b5a1a;background:#1d1a10"><b style="color:#ffd54a">'+(ion>0?'Yderste skal: '+nVal+' elektroner':'Valenselektroner: '+nVal)+'</b> i '+valSub.map(k=>{const e=conf.find(c=>c.key===k).e;return k+sup(e);}).join(' ')+
+      (ion>0?'<br><span class="small">Atomet har '+valE(Z)+' valenselektroner, som '+NAMES[Z-1]+'-ionen har afgivet ('+ion+'+).</span>':ion<0?'<br><span class="small">Ionen har optaget '+(-ion)+' elektron'+(ion<-1?'er':'')+'.</span>':'')+
+      '<br><span class="small" style="color:#9fdcff">Indre elektroner: '+(nE-nVal)+'</span>'+
+      '<div class="small muted" style="margin-top:4px">Elektroner pr. skal: '+[...shells].sort((a,b)=>a[0]-b[0]).map(([n,e])=>SHELL_LET[n-1]+'(n='+n+'): '+e).join(' · ')+'</div></div>'; }
+  h+='<div class="row" style="margin-top:8px"><button data-of="all">Vis alle</button><button data-of="val">Kun valens</button><button data-of="outer">Yderste skal</button><button data-of="none">Ingen</button></div>';
+  h+='<div class="muted small" style="margin-top:6px">Orbitaldiagram (Aufbau + Hunds regel). Klik på en skal for at vise eller skjule den, eller på en boks for kun at vise den orbital:</div>';
+  h+='<table class="orbTable">';
+  const bySub=new Map(); v.orbs.forEach((o,k)=>{ if(!bySub.has(o.subshell)) bySub.set(o.subshell,[]); bySub.get(o.subshell).push(k); });
+  for(const [sk,idx] of bySub){
+    const on=idx.some(k=>v.visible.has(k)); const o0=v.orbs[idx[0]]; const tot=idx.reduce((s,k)=>s+v.orbs[k].e,0);
+    h+='<tr class="sub'+(on?'':' off')+'" data-sub="'+sk+'"><td class="sublab" data-subt="'+sk+'" style="color:'+typeCss(o0.l)+'">'+sk+'<sup>'+tot+'</sup>'+(o0.valence?'<span class="valtag">valens</span>':'')+'</td><td><div class="boxes">';
+    for(const k of idx){ const o=v.orbs[k]; const arrows=o.e===2?'↑↓':o.e===1?'↑':'';
+      h+='<div class="box'+(v.solo===k?' solo':'')+'" style="border-color:'+orbHex(o)+';color:'+(o.valence?'#ffd54a':'#9fdcff')+'" data-orb="'+k+'" title="'+o.lab+(o.sub?'_'+o.sub:'')+': '+o.e+' elektron'+(o.e===1?'':'er')+'">'+arrows+'</div>'; }
+    h+='</div></td><td class="small muted">'+idx.map(k=>v.orbs[k].sub).filter(Boolean).map(s=>SUBL[o0.l]+'<sub>'+s+'</sub>').join(' ')+'</td></tr>';
+  }
+  h+='</table>';
+  h+='<div class="legend"><span><i style="background:'+typeCss(0)+'"></i>s</span><span><i style="background:'+typeCss(1)+'"></i>p</span><span><i style="background:'+typeCss(2)+'"></i>d</span><span><i style="background:'+typeCss(3)+'"></i>f</span><span><i style="background:#ffe680"></i>elektron</span><span><i style="background:#ff5a4f"></i>proton</span><span><i style="background:#a9b8d6"></i>neutron</span></div>';
+  h+='<div class="note"><b>Orbitalformer</b> viser hver orbitals form (vinkeldelen |Y<sub>lm</sub>|). Lys og mørk lap er bølgefunktionens + og − fase, og hver orbital rummer højst 2 elektroner (↑↓). <b>Skalmodel</b> viser antal elektroner pr. skal, og <b>Sky |ψ|²</b> viser sandsynlighedsfordelingen. Brug ◀ ▶ til at se én orbital ad gangen. Størrelserne er ikke i målestok, og kernen er tegnet ca. 10.000 gange for stor.</div>';
+  if(!(state.orbAlpha>0.3)) h+='<div class="row" style="margin-top:6px"><button class="primary" id="goAtom">⚛ Zoom ind på '+a.el+'</button></div>';
+  $('atomPanel').innerHTML=h;
+  { const valO=v.orbs.filter(o=>o.valence); const nVal=valO.reduce((s2,o)=>s2+o.e,0); const valSub=[...new Set(valO.map(o=>o.subshell))].map(k=>{const e=conf.find(c=>c.key===k).e;return k+sup(e);}).join(' ');
+    let col=colorOf(a.el); if(a.el==='C') col='#d8d8d8'; if(a.el==='N') col='#7f9dff'; if(a.el==='O') col='#ff6b6b'; if(a.el==='H') col='#ffffff';
+    let mol=''; if(m.atoms.length>1){ const d=m.info[i]; const sh=SHAPES[d.sn+','+d.L]; mol=d.nb+' binding'+(d.nb===1?'':'er')+' · '+a.lp+(a.lp===1?' frit par':' frie par')+(a.rad?' + 1 uparret e⁻':'')+(a.charge?' · formel ladning '+(a.charge>0?'+':'')+a.charge:'')+(d.nb>=2&&sh?' · '+axe(d.nb,d.L)+' '+sh[0]+' ('+sh[3]+')':''); }
+    $('focusBar').innerHTML='<div class="row" style="flex-wrap:nowrap;align-items:center"><span class="fsym" style="color:'+col+'">'+a.el+'</span><div style="min-width:0"><div class="small"><b>I fokus:</b> '+NAMES[Z-1]+(ion?' ion':'')+' · Z = '+Z+' · '+Z+' p⁺, '+v.N+' n⁰, '+nE+' e⁻ · atom '+(i+1)+'/'+m.atoms.length+'</div>'+
+      '<div class="small"><span class="fval">'+(ion>0?'Yderste skal: '+nVal+' e⁻':'Valenselektroner: '+nVal)+'</span> ('+valSub+') · '+configShort(Z,conf)+'</div>'+(mol?'<div class="small muted">'+mol+'</div>':'')+'</div></div>'; }
+  const ga=$('goAtom'); if(ga) ga.onclick=()=>flyToAtom(i,0.34);
+}
+function typeCss(l){return ['#5cc8ff','#ff9f43','#7ee787','#d78bff'][l]||'#ccc';}
+$('atomPanel').addEventListener('click',e=>{
+  const m=state.mol; const i=currentAtomIdx(); if(!m||i<0) return; const a=m.atoms[i]; const v=getAtomViz(a.Z,m.atoms.length===1?a.charge:0);
+  const t=e.target.closest('[data-orb],[data-subt],[data-of]'); if(!t) return;
+  if(t.dataset.orb!==undefined){ const k=+t.dataset.orb; v.solo=v.solo===k?-1:k; if(v.solo>=0) v.visible.add(k); }
+  else if(t.dataset.subt){ const sk=t.dataset.subt; const idx=v.orbs.map((o,k)=>o.subshell===sk?k:-1).filter(k=>k>=0); const on=idx.some(k=>v.visible.has(k)); idx.forEach(k=>on?v.visible.delete(k):v.visible.add(k)); v.solo=-1; }
+  else if(t.dataset.of){ applyFilter(v,t.dataset.of); }
+  renderAtomPanel(true);
+});
+$('atomPanel').addEventListener('mouseover',e=>{ const m=state.mol; const i=currentAtomIdx(); if(!m||i<0) return; const a=m.atoms[i]; const v=getAtomViz(a.Z,m.atoms.length===1?a.charge:0); const t=e.target.closest('[data-orb]'); v.hover=t?+t.dataset.orb:-1; const r=e.target.closest('tr.sub'); v.hoverSub=r?r.dataset.sub:null; });
+$('focusBar').addEventListener('click',()=>{ const ap=$('atomPanel'); ap.scrollIntoView({behavior:'smooth',block:'start'}); });
+$('atomPanel').addEventListener('mouseleave',()=>{ const m=state.mol; const i=currentAtomIdx(); if(!m||i<0) return; const a=m.atoms[i]; const v=getAtomViz(a.Z,m.atoms.length===1?a.charge:0); v.hover=-1; v.hoverSub=null; });
+
+/* =====================================================================
+   3D-TEGNING
+   ===================================================================== */
+const smooth=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t);};
+function enterAtom(i){ state.atomLock=i; state.zoomFocus=i; state.focus=i; }
+function exitAtom(animate){ const m=state.mol; if(!m||m.atoms.length===1) return; state.atomLock=-1; state.zoomFocus=-1; state.focus=-1;
+  if(animate) state.anim={t0:performance.now(),dur:700,fromT:state.target.slice(),toT:[0,0,0],fromZ:state.zoom,toZ:state.baseZoom};
+  renderAtomPanel(true); }
+function orbitalFocusIdx(){
+  const m=state.mol; if(!m) return -1;
+  if(state.focus>=0) return state.focus;
+  let best=-1,bd=1e9; m.atoms.forEach((a,i)=>{ const p=proj(m.pos[i]); const d=Math.hypot(p.x-W/2,p.y-H/2); if(d<bd){bd=d;best=i;} });
+  if(best<0) return -1; const r=cloudRadius(m.atoms[best].Z)*state.zoom; if(bd>r*1.2) return -1;
+  return best;
+}
+function drawScene(){
+  ctx.setTransform(DPR,0,0,DPR,0,0); ctx.clearRect(0,0,W,H);
+  const m=state.mol; if(!m) return;
+  const n=m.atoms.length; const minD=Math.min(W,H);
+  const now=performance.now(); const dts=Math.min(0.1,(now-(state.lastScene||now))/1000); state.lastScene=now;
+  if(n===1) state.atomLock=0;
+  let fi=-1, tgt=0;
+  if(state.atomLock>=0&&state.atomLock<n){
+    fi=state.atomLock; tgt=1;
+    // atomvisningen forbliver låst, uanset zoom, indtil man zoomer helt ud til molekyleoversigten (eller trykker "Tilbage")
+    // atomvisningen forlades kun med knappen/Esc eller ved at blive ved med at scrolle ud ved mindste zoom
+  } else {
+    state.atomLock=-1; fi=orbitalFocusIdx();
+    if(fi>=0){ const cr=cloudRadius(m.atoms[fi].Z); const q=cr*state.zoom/minD; if(q>=orbThresholds(cr)[0]){ enterAtom(fi); tgt=1; } }
+  }
+  if(fi<0&&state.oaCur>0.01) fi=state.orbIdx;
+  state.oaCur=(state.oaCur||0)+(tgt-(state.oaCur||0))*Math.min(1,dts*6); if(state.oaCur<0.01) state.oaCur=0; if(state.oaCur>0.995) state.oaCur=1;
+  if(fi<0||fi>=n) state.oaCur=0;
+  const oa=state.oaCur;
+  state.orbAlpha=oa; state.orbIdx=fi;
+  drawMolecule(fi,oa);
+  if(oa>0.01) drawAtomView(fi,oa);
+  if(state.opts.axes) drawAxes();
+  drawHUD(fi,oa);
+}
+function drawMolecule(fi,oa){
+  const m=state.mol, at=m.atoms, z=state.zoom; const P=m.pos.map(proj);
+  const items=[]; const st=state.opts.style;
+  const others=1-0.97*oa;
+  at.forEach((a,i)=>{ items.push({z:P[i].z,k:0,i}); });
+  if(st!=='sf') m.bonds.forEach((b,bi)=>{ const pa=P[b.a],pb=P[b.b]; const mid={x:(pa.x+pb.x)/2,y:(pa.y+pb.y)/2,z:(pa.z+pb.z)/2};
+    items.push({z:(pa.z+mid.z)/2-0.01,k:1,from:pa,to:mid,b,ai:b.a,pa,pb}); items.push({z:(pb.z+mid.z)/2-0.01,k:1,from:pb,to:mid,b,ai:b.b,pa,pb}); });
+  if(state.opts.lp&&st!=='sf') at.forEach((a,i)=>{ (m.lpDirs[i]||[]).forEach((u,k)=>{ if(at.length===1) return; const R=ballR(a); const tip=V.add(m.pos[i],V.mul(u,R+0.42)); const pt=proj(tip); items.push({z:pt.z,k:2,i,u,rad:k>=a.lp}); }); });
+  items.sort((p,q)=>p.z-q.z);
+  for(const it of items){
+    if(it.k===0){
+      const a=at[it.i]; let al=it.i===fi?1-oa:others; if(al<0.02) continue; const p=P[it.i]; const r=ballR(a)*z;
+      if(p.x<-r||p.x>W+r||p.y<-r||p.y>H+r) continue;
+      ctx.globalAlpha=al; ctx.drawImage(sphereSprite(colorOf(a.el)),p.x-r,p.y-r,2*r,2*r);
+      if(it.i===currentAtomIdx()&&at.length>1){ ctx.strokeStyle='rgba(92,200,255,0.9)'; ctx.lineWidth=2; if(it.i!==state.sel) ctx.setLineDash([5,4]); ctx.beginPath(); ctx.arc(p.x,p.y,r+3,0,7); ctx.stroke(); ctx.setLineDash([]); }
+      if(state.opts.labels&&r>7&&st!=='st'){ ctx.fillStyle=(a.el==='H'||a.el==='C'||lum(colorOf(a.el))>0.6)?'rgba(20,20,30,0.85)':'rgba(255,255,255,0.95)'; ctx.font='600 '+Math.min(28,Math.max(9,r*0.62))+'px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(a.el+(a.charge&&at.length>1?(a.charge>0?'⁺':'⁻'):''),p.x,p.y+1); }
+      ctx.globalAlpha=1;
+    } else if(it.k===1){
+      const al=others; if(al<0.02) continue; const b=it.b; const col=colorOf(at[it.ai].el);
+      const dx=it.pb.x-it.pa.x, dy=it.pb.y-it.pa.y; const L=Math.hypot(dx,dy); if(L<1) continue; const px=-dy/L, py=dx/L;
+      const o=Math.round(b.o); const base=st==='st'?0.26:0.16;
+      const w=(o===1?base:o===2?base*0.6:base*0.48)*z; const gap=(o===2?0.075:0.11)*z*(st==='st'?1.5:1);
+      const offs=o===1?[0]:o===2?[-gap,gap]:o===3?[-gap,0,gap]:[-1.5*gap,-0.5*gap,0.5*gap,1.5*gap];
+      ctx.globalAlpha=al; ctx.lineCap='butt';
+      const [r,g,bb]=hexToRgb(col);
+      for(const of of offs){ const sx=it.from.x+px*of, sy=it.from.y+py*of, ex=it.to.x+px*of, ey=it.to.y+py*of;
+        ctx.strokeStyle=`rgb(${r*0.35|0},${g*0.35|0},${bb*0.35|0})`; ctx.lineWidth=w+1.5; ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(ex,ey); ctx.stroke();
+        ctx.strokeStyle=`rgb(${r*0.8|0},${g*0.8|0},${bb*0.8|0})`; ctx.lineWidth=w; ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(ex,ey); ctx.stroke();
+        ctx.strokeStyle=`rgba(255,255,255,0.35)`; ctx.lineWidth=w*0.3; ctx.beginPath(); ctx.moveTo(sx-px*w*0.18,sy-py*w*0.18); ctx.lineTo(ex-px*w*0.18,ey-py*w*0.18); ctx.stroke(); }
+      ctx.globalAlpha=1;
+    } else if(it.k===2){
+      const a=at[it.i]; const al=(it.i===fi?1-oa:others)*0.9; if(al<0.02) continue; const R=ballR(a);
+      ctx.globalAlpha=al;
+      for(let s=0;s<6;s++){ const t=s/5; const c=proj(V.add(m.pos[it.i],V.mul(it.u,R*0.6+t*0.45))); const rr=(0.07+0.13*Math.sin(Math.PI*(0.15+0.7*t)))*z; ctx.fillStyle='rgba(190,140,255,0.16)'; ctx.beginPath(); ctx.arc(c.x,c.y,rr,0,7); ctx.fill(); }
+      const tip=proj(V.add(m.pos[it.i],V.mul(it.u,R+0.3))); const pv=V.norm(V.cross(it.u,[0.3,0.5,0.8])); const pvw=viewToWorld([1,0,0]);
+      let side=V.norm(V.sub(pvw,V.mul(it.u,V.dot(pvw,it.u)))); if(V.len(side)<0.1) side=pv;
+      ctx.fillStyle='#ffd166'; const er=Math.max(1.5,0.045*z);
+      if(it.rad){ ctx.beginPath(); ctx.arc(tip.x,tip.y,er,0,7); ctx.fill(); }
+      else { for(const sg of [-1,1]){ const e=proj(V.add(m.pos[it.i],V.add(V.mul(it.u,R+0.3),V.mul(side,0.07*sg)))); ctx.beginPath(); ctx.arc(e.x,e.y,er,0,7); ctx.fill(); } }
+      ctx.globalAlpha=1;
+    }
+  }
+  if(others>0.3){
+    ctx.globalAlpha=others;
+    if(state.opts.angles) drawAngles(P);
+    if(state.opts.lengths) drawLengths(P);
+    ctx.globalAlpha=1;
+  }
+}
+function lum(hex){const [r,g,b]=hexToRgb(hex);return (0.299*r+0.587*g+0.114*b)/255;}
+function drawAngles(P){
+  const m=state.mol; const at=m.atoms; let centers=[];
+  if(state.sel>=0&&at[state.sel].nb.length>=2) centers=[state.sel];
+  else { const cs=at.map((a,i)=>i).filter(i=>at[i].nb.length>=2&&at[i].Z>1); centers=at.length<=13?cs:cs.slice(0,1);
+    if(!centers.length) centers=at.map((a,i)=>i).filter(i=>at[i].nb.length>=2).slice(0,1); }
+  ctx.font='600 12px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const c of centers){
+    const nb=at[c].nb.map(x=>x.j); const pairs=[];
+    for(let p=0;p<nb.length;p++) for(let q=p+1;q<nb.length;q++){ const u=V.norm(V.sub(m.pos[nb[p]],m.pos[c])), w=V.norm(V.sub(m.pos[nb[q]],m.pos[c])); pairs.push({u,w,ang:V.angle(u,w)}); }
+    let show=pairs.filter(p=>p.ang<170); if(!show.length) show=pairs.slice(0,1);
+    show=show.slice(0,12);
+    const R=Math.max(0.42,ballR(at[c])+0.12);
+    for(const pr of show){
+      ctx.strokeStyle='rgba(255,209,102,0.85)'; ctx.lineWidth=1.5; ctx.beginPath();
+      let ax=V.cross(pr.u,pr.w); if(V.len(ax)<1e-6) ax=V.perp(pr.u); const th=pr.ang*Math.PI/180;
+      for(let s=0;s<=20;s++){ const t=s/20*th; const d=mulMV(rotAxis(ax,t),pr.u); const q=proj(V.add(m.pos[c],V.mul(d,R))); if(s===0) ctx.moveTo(q.x,q.y); else ctx.lineTo(q.x,q.y); }
+      ctx.stroke();
+      const dm=mulMV(rotAxis(ax,th/2),pr.u); const q=proj(V.add(m.pos[c],V.mul(dm,R+0.28)));
+      const txt=fmt(pr.ang,1)+'°'; const tw=ctx.measureText(txt).width;
+      ctx.fillStyle='rgba(11,16,32,0.75)'; ctx.fillRect(q.x-tw/2-3,q.y-8,tw+6,16); ctx.fillStyle='#ffd166'; ctx.fillText(txt,q.x,q.y);
+    }
+  }
+}
+function drawLengths(P){
+  const m=state.mol; ctx.font='11px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const b of m.bonds){ const d=V.dist(m.pos[b.a],m.pos[b.b]); const x=(P[b.a].x+P[b.b].x)/2, y=(P[b.a].y+P[b.b].y)/2; const t=fmt(d,2)+' Å'; const tw=ctx.measureText(t).width;
+    ctx.fillStyle='rgba(11,16,32,0.75)'; ctx.fillRect(x-tw/2-3,y-7,tw+6,14); ctx.fillStyle='#9fe3ff'; ctx.fillText(t,x,y); }
+}
+function drawAxes(){
+  const ox=W-60, oy=H-60, L=36; const M=state.M;
+  const ax=[[1,0,0,'x','#ff6b6b'],[0,1,0,'y','#7ee787'],[0,0,1,'z','#5cc8ff']].map(a=>({v:mulMV(M,[a[0],a[1],a[2]]),n:a[3],c:a[4]}));
+  ax.sort((p,q)=>p.v[2]-q.v[2]);
+  ctx.lineWidth=2.2; ctx.font='700 12px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle';
+  for(const a of ax){ ctx.strokeStyle=a.c; ctx.globalAlpha=0.55+0.45*(a.v[2]+1)/2; ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox+a.v[0]*L,oy-a.v[1]*L); ctx.stroke(); ctx.fillStyle=a.c; ctx.fillText(a.n,ox+a.v[0]*(L+10),oy-a.v[1]*(L+10)); }
+  ctx.globalAlpha=1;
+}
+/* ---------- ATOMVISNING: farver ---------- */
+const ORB_COL={0:['#8fd3ff'],1:['#ff5c5c','#4fd65a','#4d9dff'],2:['#ffb347','#d97bff','#3fe0d0','#ff6fae','#c8e64c'],3:['#ff8a5c','#5cc8ff','#a0ff7a','#ffd84d','#ff6bd6','#8d97ff','#4dffc3']};
+function orbHex(o){ const mode=state.opts.orbColor; if(mode==='type') return typeCss(o.l); return (ORB_COL[o.l]&&ORB_COL[o.l][o.m])||'#cccccc'; }
+function orbRGB(o,k,phase){
+  if(state.opts.orbColor==='phase') return phase?[255,110,70]:[70,140,255];
+  let c=hexToRgb(orbHex(o)); if(!phase) c=c.map(x=>x*0.58+28); return c;
+}
+const SHELL_LET='KLMNOPQ';
+let lastT=performance.now();
+function orbSize(v,o){ return v.cloudR*(0.14+0.86*Math.pow(o.n/v.nmax,1.3))*(o.l===0?0.62:1.0); }
+function isVis(v,k){ return v.solo>=0?k===v.solo:v.visible.has(k); }
+
+/* ---------- lobe-mesh (polært plot af |Y_lm|) ---------- */
+const meshCache=new Map();
+function lobeMesh(l,mi,res){
+  const key=l+':'+mi+':'+res; if(meshCache.has(key)) return meshCache.get(key);
+  const NT=res, NP=res*2; const h=HARM[l][mi]; const pw=l===0?0:2.0;
+  const verts=new Float32Array((NT+1)*(NP+1)*3); const sgn=[];
+  let q=0;
+  for(let it=0;it<=NT;it++){ const th=Math.PI*it/NT; for(let ip=0;ip<=NP;ip++){ const ph=2*Math.PI*ip/NP;
+    const d=[Math.sin(th)*Math.cos(ph),Math.sin(th)*Math.sin(ph),Math.cos(th)]; const y=h.f(d[0],d[1],d[2]);
+    const r=l===0?1:Math.pow(Math.abs(y)/Math.sqrt(h.max),pw);
+    verts[q++]=d[0]*r; verts[q++]=d[1]*r; verts[q++]=d[2]*r; } }
+  const quads=[]; const V3=i=>[verts[i*3],verts[i*3+1],verts[i*3+2]];
+  for(let it=0;it<NT;it++) for(let ip=0;ip<NP;ip++){
+    const i0=it*(NP+1)+ip, i1=(it+1)*(NP+1)+ip, i2=(it+1)*(NP+1)+ip+1, i3=it*(NP+1)+ip+1;
+    const a=V3(i0),b=V3(i1),c=V3(i2),d=V3(i3);
+    const cen=V.mul(V.add(V.add(a,b),V.add(c,d)),0.25);
+    let n=V.cross(V.sub(c,a),V.sub(d,b)); if(V.len(n)<1e-9) continue; n=V.norm(n); if(V.dot(n,cen)<0) n=V.mul(n,-1);
+    const th=Math.PI*(it+0.5)/NT, ph=2*Math.PI*(ip+0.5)/NP; const y=h.f(Math.sin(th)*Math.cos(ph),Math.sin(th)*Math.sin(ph),Math.cos(th));
+    quads.push({i:[i0,i1,i2,i3],n,s:l===0?1:(y>=0?1:0),cen});
+  }
+  const m={verts,quads,nv:(NT+1)*(NP+1)}; meshCache.set(key,m); return m;
+}
+
+/* ---------- elektronpositioner ---------- */
+/* ---------- elektronbevægelse inde i orbitalen ---------- */
+function randUnit(){ const z=2*Math.random()-1, ph=2*Math.PI*Math.random(), s=Math.sqrt(1-z*z); return [s*Math.cos(ph),s*Math.sin(ph),z]; }
+function lobeOf(o,p){ // hvilken lap (fortegn + retning) et punkt ligger i
+  const h=HARM[o.l][o.m]; const L=V.len(p); if(L<1e-6) return 0; const d=V.mul(p,1/L); return h.f(d[0],d[1],d[2])>=0?1:-1; }
+/* tilfældigt punkt inde i orbitalens form (enhedsstørrelse), vægtet med |Y|² */
+function sampleInOrbital(o,cur){
+  const h=HARM[o.l][o.m];
+  if(o.l===0){ for(let t=0;t<50;t++){ const p=[Math.random()*2-1,Math.random()*2-1,Math.random()*2-1]; const r=V.len(p); if(r<=1&&r>0.15) return V.mul(p,0.85); } return [0.4,0,0]; }
+  const stay=cur&&V.len(cur)>0.08&&Math.random()<0.9;
+  const cd=stay?V.norm(cur):null; const cs=stay?Math.sign(h.f(cd[0],cd[1],cd[2])):0;
+  for(let t=0;t<400;t++){
+    const d=randUnit(); const y=h.f(d[0],d[1],d[2]); if(Math.random()*h.max>y*y) continue;
+    if(stay&&(Math.sign(y)!==cs||V.dot(d,cd)<0.5)) continue;
+    const rs=Math.pow(Math.abs(y)/Math.sqrt(h.max),2.0);
+    return V.mul(d,rs*(0.35+0.5*Math.random()));
+  }
+  return cur?cur.slice():V.mul(h.dir,0.5);
+}
+function sampleInCloud(o,cur){
+  const pts=o.pts, n=pts.length/3; const u=1/o.rmeanUnit; let best=null,bd=1e9;
+  const tries=cur&&Math.random()<0.85?8:1;
+  for(let t=0;t<tries;t++){ const i=Math.floor(Math.random()*n); const p=[pts[i*3]*u,pts[i*3+1]*u,pts[i*3+2]*u]; const d=cur?V.dist(p,cur):0; if(d<bd){bd=d;best=p;} }
+  return best;
+}
+function electronStates(v,o){
+  const mode=state.atomMode;
+  if(o.est&&o.estMode===mode) return o.est;
+  const h=HARM[o.l][o.m]; o.estMode=mode; o.est=[];
+  for(let q=0;q<o.e;q++){
+    let p; if(o.l===0) p=V.mul(randUnit(),0.5); else p=V.mul(q===0?h.dir:h.ndir,0.5);
+    o.est.push({p,vel:[0,0,0],tgt:null,queue:[],trail:[],spin:q===0?1:-1});
+  }
+  return o.est;
+}
+function stepElectrons(v,dt){
+  const cloud=state.atomMode==='cloud';
+  v.orbs.forEach((o,k)=>{ if(!isVis(v,k)) return; const es=electronStates(v,o);
+    for(const e of es){
+      if(!e.tgt){ if(e.queue.length) e.tgt=e.queue.shift(); else { const t=cloud?sampleInCloud(o,e.p):sampleInOrbital(o,e.p);
+          // skifter elektronen lap, går den gennem kernen (knudeplanet), som orbitalens form kræver
+          if(!cloud&&o.l>0&&lobeOf(o,t)!==lobeOf(o,e.p)){ e.tgt=[0,0,0]; e.queue.push(t); } else e.tgt=t; } }
+      const d=V.sub(e.tgt,e.p); const L=V.len(d); const speed=cloud?0.9:0.55;
+      const want=L>1e-6?V.mul(d,Math.min(speed,L*3)/L):[0,0,0];
+      e.vel=V.add(e.vel,V.mul(V.sub(want,e.vel),Math.min(1,dt*3)));
+      e.p=V.add(e.p,V.mul(e.vel,dt));
+      if(!cloud){ const Lp=V.len(e.p); // hold elektronen inden for orbitalens overflade
+        if(o.l===0){ if(Lp>0.95) e.p=V.mul(e.p,0.95/Lp); }
+        else if(Lp>1e-6){ const hh=HARM[o.l][o.m]; const dd=V.mul(e.p,1/Lp); const yy=hh.f(dd[0],dd[1],dd[2]); const rs=Math.pow(Math.abs(yy)/Math.sqrt(hh.max),2)*0.97; if(Lp>rs){ e.p=V.mul(dd,rs); e.vel=V.mul(e.vel,0.5); } } }
+      if(L<0.06) e.tgt=null;
+      e.trail.push(e.p.slice()); if(e.trail.length>28) e.trail.shift();
+    }
+  });
+}
+
+/* ---------- hovedfunktion ---------- */
+function drawAtomView(fi,oa){
+  const m=state.mol, a=m.atoms[fi]; const ion=m.atoms.length===1?a.charge:0; const v=getAtomViz(a.Z,ion);
+  const z=state.zoom; const C=proj(m.pos[fi]);
+  const now=performance.now(); const dt=Math.min(0.05,(now-lastT)/1000); lastT=now; v.time=(v.time||0)+dt;
+  const nucScreen=v.nucR*z;
+  const fade=Math.max(0.10,1-smooth(0.12*Math.min(W,H),0.45*Math.min(W,H),nucScreen)*0.9);
+  const mode=state.atomMode;
+  ctx.globalAlpha=oa*0.85; const bg=ctx.createRadialGradient(C.x,C.y,0,C.x,C.y,v.cloudR*z*1.6);
+  bg.addColorStop(0,'rgba(5,8,18,0.9)'); bg.addColorStop(1,'rgba(5,8,18,0)'); ctx.fillStyle=bg; ctx.fillRect(0,0,W,H); ctx.globalAlpha=1;
+  if(mode!=='shells'&&state.opts.electrons) stepElectrons(v,dt);
+  if(mode==='shells') drawShells(v,C,oa*fade);
+  else { drawNucleus(v,C,oa,nucScreen); drawOrbitals3D(v,C,oa*fade); }
+  if(mode!=='shells') drawOrbitalLabels(v,C,oa*fade);
+  drawAtomLegend(v,oa);
+  updateAtomBar(v,oa);
+}
+/* lapper (halvgennemsigtige) eller sky + elektroner, dybdesorteret sammen */
+function drawOrbitals3D(v,C,al){
+  const z=state.zoom, M=state.M; const vis=[]; v.orbs.forEach((o,k)=>{ if(isVis(v,k)||k===v.hover) vis.push(k); });
+  const hi=v.hover>=0?v.hover:-1; const hiSub=v.hoverSub;
+  const items=[]; const cloud=state.atomMode==='cloud';
+  const dimOf=(o,k)=>(hi>=0&&k!==hi)?0.12:(hiSub&&o.subshell!==hiSub)?0.15:1;
+  if(cloud) drawCloudPoints(v,C,al,vis,dimOf);
+  else {
+    const res=vis.length>9?12:vis.length>4?16:22;
+    const L=V.norm([-0.35,0.55,0.75]), Hh=V.norm(V.add(L,[0,0,1]));
+    for(const k of vis){
+      const o=v.orbs[k]; const mesh=lobeMesh(o.l,o.m,res); const Sw=orbSize(v,o), S=Sw*z;
+      let base=o.l===0?0.16:(vis.length>9?0.26:0.40); if(vis.length===1) base=o.l===0?0.30:0.48;
+      base*=al*dimOf(o,k); if(base<0.005) continue;
+      const nv=mesh.nv, vt=mesh.verts; const sx=new Float32Array(nv), sy=new Float32Array(nv), sz=new Float32Array(nv);
+      for(let i=0;i<nv;i++){ const x=vt[i*3],y=vt[i*3+1],w=vt[i*3+2];
+        sx[i]=C.x+(M[0]*x+M[1]*y+M[2]*w)*S; sy[i]=C.y-(M[3]*x+M[4]*y+M[5]*w)*S; sz[i]=(M[6]*x+M[7]*y+M[8]*w)*Sw; }
+      const cp=orbRGB(o,k,1), cn=orbRGB(o,k,0);
+      for(const qd of mesh.quads){
+        const n=qd.n; const nx=M[0]*n[0]+M[1]*n[1]+M[2]*n[2], ny=M[3]*n[0]+M[4]*n[1]+M[5]*n[2], nz=M[6]*n[0]+M[7]*n[1]+M[8]*n[2];
+        const front=nz>0; const f=front?1:-1;
+        const dif=Math.max(0,f*(nx*L[0]+ny*L[1]+nz*L[2])); const spec=front?Math.pow(Math.max(0,nx*Hh[0]+ny*Hh[1]+nz*Hh[2]),30)*0.6:0;
+        const rim=Math.pow(1-Math.min(1,Math.abs(nz)),2.2);
+        const sh=(0.40+0.60*dif)*(front?1:0.65); const c=qd.s?cp:cn;
+        const a2=base*(0.30+1.25*rim)*(front?1:0.7);
+        const i=qd.i; const depth=(sz[i[0]]+sz[i[1]]+sz[i[2]]+sz[i[3]])*0.25;
+        items.push({d:depth,t:0,x0:sx[i[0]],y0:sy[i[0]],x1:sx[i[1]],y1:sy[i[1]],x2:sx[i[2]],y2:sy[i[2]],x3:sx[i[3]],y3:sy[i[3]],
+          f:`rgba(${Math.min(255,c[0]*sh+255*spec)|0},${Math.min(255,c[1]*sh+255*spec)|0},${Math.min(255,c[2]*sh+255*spec)|0},${Math.min(0.9,a2).toFixed(3)})`});
+      }
+    }
+  }
+  // elektroner som egne objekter i dybdesorteringen
+  let nEl=0;
+  if(state.opts.electrons) v.orbs.forEach((o,k)=>{ if(!isVis(v,k)||!o.est||o.estMode!==state.atomMode) return; const Sw=orbSize(v,o);
+    o.est.forEach((e,q)=>{ const p=V.mul(e.p,Sw); const d=M[6]*p[0]+M[7]*p[1]+M[8]*p[2]; items.push({d,t:1,o,k,e,Sw}); nEl++; }); });
+  items.sort((p,q)=>p.d-q.d);
+  ctx.lineJoin='round'; ctx.lineWidth=0.6;
+  const showElLab=state.opts.orbLabels&&nEl<=14;
+  for(const it of items){
+    if(it.t===0){ ctx.fillStyle=it.f; ctx.beginPath(); ctx.moveTo(it.x0,it.y0); ctx.lineTo(it.x1,it.y1); ctx.lineTo(it.x2,it.y2); ctx.lineTo(it.x3,it.y3); ctx.closePath(); ctx.fill(); }
+    else drawElectron(v,C,it,al*dimOf(it.o,it.k),showElLab);
+  }
+  if(!cloud) drawCoreZone(v,C,al);
+}
+function drawElectron(v,C,it,al,showLab){
+  const z=state.zoom, M=state.M; const o=it.o, e=it.e, Sw=it.Sw;
+  const P=u=>{ const p=V.mul(u,Sw); return [C.x+(M[0]*p[0]+M[1]*p[1]+M[2]*p[2])*z, C.y-(M[3]*p[0]+M[4]*p[1]+M[5]*p[2])*z]; };
+  const col=hexToRgb(orbHex(o)); const val=o.valence;
+  // spor
+  if(e.trail.length>2){ ctx.lineCap='round'; for(let i=1;i<e.trail.length;i++){ const a=P(e.trail[i-1]), b=P(e.trail[i]); const f=i/e.trail.length;
+      ctx.strokeStyle=`rgba(${col[0]},${col[1]},${col[2]},${(0.55*f*al).toFixed(3)})`; ctx.lineWidth=1+3*f; ctx.beginPath(); ctx.moveTo(a[0],a[1]); ctx.lineTo(b[0],b[1]); ctx.stroke(); } }
+  const [x,y]=P(e.p); const r=Math.max(5,Math.min(11,Sw*z*0.07));
+  ctx.globalAlpha=al;
+  ctx.fillStyle=`rgba(${col[0]},${col[1]},${col[2]},0.30)`; ctx.beginPath(); ctx.arc(x,y,r*1.8,0,7); ctx.fill();
+  const g=ctx.createRadialGradient(x-r*0.35,y-r*0.35,r*0.1,x,y,r); g.addColorStop(0,'#ffffff'); g.addColorStop(0.45,`rgb(${col[0]},${col[1]},${col[2]})`); g.addColorStop(1,`rgb(${col[0]*0.5|0},${col[1]*0.5|0},${col[2]*0.5|0})`);
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+  ctx.lineWidth=val?2.4:1.6; ctx.strokeStyle=val?'#ffd54a':'#bfe6ff'; ctx.stroke();
+  if(r>=6){ ctx.fillStyle='#0b0b14'; ctx.font='800 '+(r*1.3)+'px system-ui'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(e.spin>0?'↑':'↓',x,y+0.5); }
+  if(showLab){ ctx.font='700 11px system-ui'; ctx.textAlign='left'; ctx.textBaseline='middle'; const t=o.lab+(o.sub?(' '+o.sub):''); const tw=ctx.measureText(t).width;
+    ctx.fillStyle='rgba(8,12,26,0.7)'; ctx.fillRect(x+r+3,y-7,tw+6,14); ctx.fillStyle=`rgb(${col[0]},${col[1]},${col[2]})`; ctx.fillText(t,x+r+6,y); }
+  ctx.globalAlpha=1;
+}
+function drawCloudPoints(v,C,al,vis,dimOf){
+  const z=state.zoom, M=state.M; const ps=Math.max(1.8,Math.min(3.6,z*v.cloudR*0.0075));
+  ctx.globalCompositeOperation='lighter';
+  for(const k of vis){ const o=v.orbs[k];
+    let a2=al*(vis.length<=1?0.75:vis.length<=4?0.5:0.3)*dimOf(o,k);
+    const pts=o.pts, n=pts.length/3; const sc=orbSize(v,o)/(o.rmeanUnit||1);
+    for(const phase of [1,0]){ const s0=phase?0:o.split, s1=phase?o.split:n; if(s1<=s0) continue;
+      const c=orbRGB(o,k,phase); ctx.fillStyle=`rgba(${c[0]|0},${c[1]|0},${c[2]|0},${a2})`;
+      for(let q=s0;q<s1;q++){ const x=pts[q*3]*sc,y=pts[q*3+1]*sc,w=pts[q*3+2]*sc; const sx=C.x+(M[0]*x+M[1]*y+M[2]*w)*z, sy=C.y-(M[3]*x+M[4]*y+M[5]*w)*z;
+        if(sx<-4||sx>W+4||sy<-4||sy>H+4) continue; ctx.fillRect(sx-ps/2,sy-ps/2,ps,ps); } } }
+  ctx.globalCompositeOperation='source-over';
+}
+/* indre (ikke viste) elektroner samlet i en markeret kerne-zone */
+function drawCoreZone(v,C,al){
+  const hidden=v.orbs.filter((o,k)=>!isVis(v,k)&&!o.valence&&o.e>0);
+  if(!hidden.length||v.solo>=0) return;
+  const z=state.zoom; const maxN=Math.max(...hidden.map(o=>o.n));
+  const R=v.cloudR*(0.14+0.86*Math.pow(maxN/v.nmax,1.3))*0.45*z;
+  if(R<6) return;
+  ctx.globalAlpha=al;
+  ctx.setLineDash([4,4]); ctx.strokeStyle='rgba(150,190,255,0.75)'; ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(C.x,C.y,R,0,7); ctx.stroke(); ctx.setLineDash([]);
+  const byN=new Map(); hidden.forEach(o=>byN.set(o.n,(byN.get(o.n)||[]).concat([o])));
+  const t=v.time||0;
+  for(const [n,os] of byN){ const rr=R*(0.3+0.6*n/maxN); const list=[]; os.forEach(o=>{for(let q=0;q<o.e;q++) list.push(o);});
+    ctx.strokeStyle='rgba(150,190,255,0.25)'; ctx.lineWidth=1; ctx.beginPath(); ctx.arc(C.x,C.y,rr,0,7); ctx.stroke();
+    const er=Math.max(1.8,Math.min(4,R*0.06));
+    list.forEach((o,q)=>{ const ang=2*Math.PI*q/list.length+t*(0.8/n); ctx.fillStyle='#bfe6ff'; ctx.beginPath(); ctx.arc(C.x+Math.cos(ang)*rr,C.y+Math.sin(ang)*rr,er,0,7); ctx.fill(); }); }
+  const nCore=hidden.reduce((s,o)=>s+o.e,0);
+  if(state.opts.orbLabels&&R>22){ ctx.font='600 12px system-ui'; ctx.textAlign='center'; ctx.textBaseline='top';
+    const txt='indre elektroner: '+nCore+' ('+hidden.map(o=>o.subshell).filter((x,i,a)=>a.indexOf(x)===i).join(' ')+')';
+    const tw=ctx.measureText(txt).width; ctx.fillStyle='rgba(8,12,26,0.75)'; ctx.fillRect(C.x-tw/2-4,C.y+R+4,tw+8,17); ctx.fillStyle='#bfe6ff'; ctx.fillText(txt,C.x,C.y+R+6); }
+  ctx.globalAlpha=1;
+}
+function drawOrbitalLabels(v,C,al){
+  if(!state.opts.orbLabels) return;
+  const z=state.zoom, M=state.M; const hi=v.hover>=0?v.hover:-1;
+  const P=p=>({x:C.x+(M[0]*p[0]+M[1]*p[1]+M[2]*p[2])*z,y:C.y-(M[3]*p[0]+M[4]*p[1]+M[5]*p[2])*z});
+  const placed=[];
+  v.orbs.forEach((o,k)=>{
+    if(!isVis(v,k)) return; const S=orbSize(v,o);
+    let p; if(o.l===0){ p={x:C.x+S*z*0.66,y:C.y-S*z*0.66}; } else { const h=HARM[o.l][o.m]; p=P(V.mul(h.dir,S*1.08)); }
+    if(p.x<20||p.x>W-20||p.y<14||p.y>H-14) return;
+    if(placed.some(q=>Math.abs(q[0]-p.x)<52&&Math.abs(q[1]-p.y)<18)) return; placed.push([p.x,p.y]);
+    let a2=al; if(hi>=0&&k!==hi) a2*=0.3; drawOrbLabel(p.x,p.y,o,a2,hexToRgb(orbHex(o)));
+  });
+}
+function drawOrbLabel(x,y,o,al,c){
+  ctx.globalAlpha=al; ctx.textBaseline='middle'; ctx.textAlign='left';
+  const main=o.lab, sub=o.sub||'', occ=o.e===2?' ↑↓':o.e===1?' ↑':'';
+  ctx.font='700 14px system-ui'; const w1=ctx.measureText(main).width; ctx.font='700 10px system-ui'; const w2=sub?ctx.measureText(sub).width+1:0; ctx.font='700 13px system-ui'; const w3=ctx.measureText(occ).width;
+  const tw=w1+w2+w3; const x0=x-tw/2;
+  ctx.fillStyle='rgba(8,12,26,0.82)'; ctx.strokeStyle=`rgba(${c[0]},${c[1]},${c[2]},0.9)`; ctx.lineWidth=1.2;
+  ctx.beginPath(); if(ctx.roundRect) ctx.roundRect(x0-5,y-10,tw+10,21,5); else ctx.rect(x0-5,y-10,tw+10,21); ctx.fill(); ctx.stroke();
+  ctx.fillStyle=`rgb(${c[0]},${c[1]},${c[2]})`; ctx.font='700 14px system-ui'; ctx.fillText(main,x0,y);
+  if(sub){ ctx.font='700 10px system-ui'; ctx.fillText(sub,x0+w1+1,y+4); }
+  ctx.fillStyle=o.valence?'#ffd54a':'#bfe6ff'; ctx.font='700 13px system-ui'; ctx.fillText(occ,x0+w1+w2,y);
+  ctx.globalAlpha=1;
+}
+function drawShells(v,C,al){
+  const z=state.zoom; const base=v.cloudR*z*0.95; const t=v.time||0;
+  const shells=new Map(); v.conf.forEach(o=>{ if(!shells.has(o.n)) shells.set(o.n,[]); shells.get(o.n).push(o); });
+  const valN=v.nmax;
+  ctx.globalAlpha=al;
+  const nR=Math.max(10,base*0.11);
+  for(const [n,os] of [...shells].sort((a,b)=>a[0]-b[0])){
+    const r=base*(v.nmax===1?0.6:0.2+0.8*n/v.nmax); const isVal=os.some(o=>{ const orb=v.orbs.find(q=>q.subshell===o.key); return orb&&orb.valence; });
+    ctx.strokeStyle=isVal?'rgba(255,213,74,0.9)':'rgba(150,175,220,0.55)'; ctx.lineWidth=isVal?2.5:1.4; ctx.beginPath(); ctx.arc(C.x,C.y,r,0,7); ctx.stroke();
+    const list=[]; os.forEach(o=>{ for(let q=0;q<o.e;q++) list.push(o); });
+    const er=Math.max(3,Math.min(8,base*0.035));
+    list.forEach((o,q)=>{ const ang=2*Math.PI*q/list.length+t*(0.6/n)-Math.PI/2; const x=C.x+Math.cos(ang)*r, y=C.y+Math.sin(ang)*r;
+      const orb=v.orbs.find(qq=>qq.subshell===o.key); const val=orb&&orb.valence;
+      ctx.fillStyle=typeCss(o.l); ctx.beginPath(); ctx.arc(x,y,er,0,7); ctx.fill(); ctx.lineWidth=val?2:1; ctx.strokeStyle=val?'#ffd54a':'rgba(0,0,0,0.6)'; ctx.stroke(); });
+    const txt='n='+n+' ('+SHELL_LET[n-1]+'): '+os.map(o=>o.key+sup(o.e)).join(' ')+' = '+list.length+' e⁻'+(isVal?'  ← valensskal':'');
+    ctx.font='600 12px system-ui'; ctx.textAlign='left'; ctx.textBaseline='middle'; const lx=C.x+r*0.72+6, ly=C.y-r*0.70; const tw=ctx.measureText(txt).width;
+    ctx.fillStyle='rgba(8,12,26,0.8)'; ctx.fillRect(lx-4,ly-9,tw+8,18); ctx.fillStyle=isVal?'#ffd54a':'#c9d6f0'; ctx.fillText(txt,lx,ly);
+  }
+  const g=ctx.createRadialGradient(C.x-nR*0.3,C.y-nR*0.3,nR*0.1,C.x,C.y,nR); g.addColorStop(0,'#ff9a8a'); g.addColorStop(1,'#a8281e');
+  ctx.fillStyle=g; ctx.beginPath(); ctx.arc(C.x,C.y,nR,0,7); ctx.fill();
+  if(nR>14){ ctx.fillStyle='#fff'; ctx.font='700 '+Math.min(14,nR*0.4)+'px system-ui'; ctx.textAlign='center'; ctx.fillText(v.Z+' p⁺',C.x,C.y-nR*0.22); ctx.fillText(v.N+' n⁰',C.x,C.y+nR*0.28); }
+  ctx.globalAlpha=1;
+}
+/* ---------- kerne ---------- */
+function drawNucleus(v,C,oa,nucScreen){
+  if(state.atomMode==='shells') return;
+  const z=state.zoom, M=state.M;
+  if(nucScreen<3){ ctx.fillStyle='rgba(255,90,70,'+oa+')'; ctx.beginPath(); ctx.arc(C.x,C.y,3,0,7); ctx.fill(); return; }
+  const nucA=smooth(4,40,nucScreen);
+  const items=v.nucleons.map(nc=>{ const vx=M[0]*nc.p[0]+M[1]*nc.p[1]+M[2]*nc.p[2], vy=M[3]*nc.p[0]+M[4]*nc.p[1]+M[5]*nc.p[2], vz=M[6]*nc.p[0]+M[7]*nc.p[1]+M[8]*nc.p[2]; return {x:C.x+vx*z,y:C.y-vy*z,z:vz,pr:nc.pr}; });
+  items.sort((p,q)=>p.z-q.z); const r=Math.max(0.8,v.nucleonR*z);
+  const sp=sphereSprite('#ff4a3d'), sn=sphereSprite('#9fb0d0');
+  ctx.globalAlpha=Math.min(1,0.5+oa*0.5);
+  for(const it of items) ctx.drawImage(it.pr?sp:sn,it.x-r,it.y-r,2*r,2*r);
+  ctx.globalAlpha=1;
+  if(nucScreen>25){ ctx.font='600 13px system-ui'; ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,'+nucA+')'; ctx.textBaseline='bottom';
+    ctx.fillText('Atomkerne: '+v.Z+' proton'+(v.Z===1?'':'er')+' (rød) + '+v.N+' neutron'+(v.N===1?'':'er')+' (grå)',C.x,C.y-nucScreen-8);
+    if(r>10&&r<70){ ctx.font='600 '+Math.min(16,r*0.7)+'px system-ui'; ctx.textBaseline='middle'; ctx.fillStyle='rgba(255,255,255,'+(0.8*nucA)+')'; const front=items.slice(-Math.min(items.length,40)); for(const it of front) ctx.fillText(it.pr?'p⁺':'n⁰',it.x,it.y); } }
+}
+/* ---------- signaturforklaring på lærredet ---------- */
+function drawAtomLegend(v,oa){
+  if(oa<0.4) return;
+  const mode=state.atomMode; const rows=[];
+  if(mode!=='shells'){ rows.push(['ring','#ffd54a','valenselektron (guld kant)']); rows.push(['ring','#bfe6ff','indre elektron (blå kant)']); rows.push(['txt','','elektronens farve = dens orbital']); rows.push(['txt','','↑ / ↓ = spin · spor = bane']); }
+  if(mode==='lobes'){ rows.push(['txt','','lys / mørk lap = fase + / −']); }
+  if(mode==='shells'){ ['s','p','d','f'].forEach((s,l)=>rows.push(['dot',typeCss(l),s+'-elektron'])); rows.push(['ring','#ffd54a','valensskal']); }
+  rows.push(['dot','#ff4a3d','proton']); rows.push(['dot','#9fb0d0','neutron']);
+  const x=W-215, y0=H-30-rows.length*17-70; ctx.globalAlpha=Math.min(1,oa);
+  ctx.fillStyle='rgba(12,18,36,0.85)'; ctx.fillRect(x-8,y0-8,210,rows.length*17+12); ctx.font='12px system-ui'; ctx.textAlign='left'; ctx.textBaseline='middle';
+  rows.forEach((r,i)=>{ const y=y0+i*17+2; if(r[0]==='dot'){ ctx.fillStyle=r[1]; ctx.beginPath(); ctx.arc(x+5,y,5,0,7); ctx.fill(); } else if(r[0]==='ring'){ ctx.strokeStyle=r[1]; ctx.lineWidth=2; ctx.beginPath(); ctx.arc(x+5,y,5,0,7); ctx.stroke(); }
+    ctx.fillStyle='#dfe6f5'; ctx.fillText(r[2],x+16,y); });
+  ctx.globalAlpha=1;
+}
+/* ---------- atom-værktøjslinje ---------- */
+function updateAtomBar(v,oa){
+  const bg=$('backGrp'); const want=state.mol&&state.mol.atoms.length>1?'flex':'none'; if(bg.style.display!==want) bg.style.display=want;
+  const bar=$('atomBar'); const show=oa>0.35; if(bar.style.display!==(show?'flex':'none')) bar.style.display=show?'flex':'none';
+  if(!show) return;
+  bar.querySelectorAll('[data-am]').forEach(b=>b.classList.toggle('on',b.dataset.am===state.atomMode));
+  const f=currentFilter(v); bar.querySelectorAll('[data-af]').forEach(b=>b.classList.toggle('on',b.dataset.af===f));
+  const nm=v.solo>=0?(v.orbs[v.solo].lab+(v.orbs[v.solo].sub?'<sub>'+v.orbs[v.solo].sub+'</sub>':'')+' ('+v.orbs[v.solo].e+' e⁻)'):'én ad gangen';
+  if($('orbName').innerHTML!==nm) $('orbName').innerHTML=nm;
+}
+function currentFilter(v){ if(v.solo>=0) return 'one'; const all=v.orbs.every((o,k)=>v.visible.has(k)); if(all) return 'all'; const val=v.orbs.every((o,k)=>v.visible.has(k)===!!o.valence); return val?'val':''; }
+function applyFilter(v,f){ v.solo=-1; v.visible.clear(); v.orbs.forEach((o,k)=>{ if(f==='all'||(f==='val'&&o.valence)||(f==='outer'&&o.n===v.nmax)) v.visible.add(k); }); }
+function activeViz(){ const m=state.mol; const i=currentAtomIdx(); if(!m||i<0) return null; const a=m.atoms[i]; return getAtomViz(a.Z,m.atoms.length===1?a.charge:0); }
+
+function drawHUD(fi,oa){
+  const m=state.mol; const z=state.zoom;
+  let mode='Molekyle', hint='Zoom ind på et atom (scroll mod det) for at se orbitaler. Dobbeltklik zoomer direkte ind på et atom.';
+  if(oa>0.5&&fi>=0){ const a=m.atoms[fi]; const v=getAtomViz(a.Z,m.atoms.length===1?a.charge:0); const ns=v.nucR*z;
+    if(ns>25){ mode='Atomkerne ('+a.el+')'; hint='Rød = proton, grå = neutron. Zoom ud for at se orbitalerne igen.'; }
+    else { mode='Atom: '+NAMES[a.Z-1]+' ('+a.el+') – orbitaler'; const nv=v.orbs.filter((o,k)=>isVis(v,k)).length; hint=(state.atomMode==='cloud'?'Sky |ψ|²: punkttætheden viser, hvor sandsynligt det er at finde elektronen. Bladr med ◀ ▶ (summen af flere orbitaler er næsten kugleformet). ':'')+'Viser '+nv+' af '+v.orbs.length+' besatte orbitaler ('+(a.Z-(m.atoms.length===1?a.charge:0))+' elektroner i alt). '+(state.outPush?'Scroll '+(3-state.outPush)+' gang(e) mere ud for at gå tilbage til molekylet. ':'')+'Zoom frit ud (overblik) og ind (kernen). Tilbage til molekylet: ⟵ Molekyle, Esc eller bliv ved med at scrolle ud.'; } }
+  else if(oa>0.05){ mode='Overgang til atomvisning'; }
+  $('hud').innerHTML='<b>'+mode+'</b> · zoom '+(z>=1000?fmt(z/1000,1)+'k':Math.round(z))+' px/Å<br><span class="muted">'+hint+'</span>';
+  const ai=oa>0.4?fi:-1; if(ai!==state._lastFocusShown){ state._lastFocusShown=ai; if(ai>=0&&state.sel!==ai&&state.focus<0){ state.focus=ai; } renderAtomPanel(); }
+}
+
+/* =====================================================================
+   ANIMATION / INTERAKTION
+   ===================================================================== */
+/* atomvisningen starter først et stykke over molekylets standardzoom */
+function orbThresholds(cr){ const minD=Math.min(W,H)||1; const qb=cr*state.baseZoom/minD; const q0=Math.max(0.09,qb*1.6); return [q0,q0+0.15]; }
+function flyToAtom(i,q){ q=0.36; const m=state.mol; if(!m) return; const minD=Math.min(W,H); const cr=cloudRadius(m.atoms[i].Z); q=Math.max(q,orbThresholds(cr)[1]+0.06); const z=q*minD/cr;
+  state.sel=i; state.focus=i; enterAtom(i); state.anim={t0:performance.now(),dur:900,fromT:state.target.slice(),toT:m.pos[i].slice(),fromZ:state.zoom,toZ:z}; renderAtomPanel(true); drawLewis(); }
+function zoomTo(z){ state.anim={t0:performance.now(),dur:500,fromT:state.target.slice(),toT:state.target.slice(),fromZ:state.zoom,toZ:z}; }
+let lastFrame=performance.now();
+function loop(now){
+  const dt=Math.min(0.05,(now-lastFrame)/1000); lastFrame=now;
+  if(!dragging){ const ar=state.ar; if(ar[0]) rotateView('x',ar[0]*Math.PI/180*dt); if(ar[1]) rotateView('y',ar[1]*Math.PI/180*dt); if(ar[2]) rotateView('z',ar[2]*Math.PI/180*dt); }
+  if(state.anim){ const a=state.anim; let t=(now-a.t0)/a.dur; if(t>=1){t=1;} const e=t<0.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+    state.target=V.add(a.fromT,V.mul(V.sub(a.toT,a.fromT),e)); state.zoom=Math.exp(Math.log(a.fromZ)+(Math.log(a.toZ)-Math.log(a.fromZ))*e); if(t>=1) state.anim=null; }
+  if(state.zoomFocus>=0&&state.mol&&!state.anim&&state.zoomFocus<state.mol.atoms.length){ const p=state.mol.pos[state.zoomFocus]; state.target=V.add(state.target,V.mul(V.sub(p,state.target),Math.min(1,dt*6))); }
+  drawScene();
+  updateAutoFocus();
+  const ci=currentAtomIdx(); if(ci!==state._panelAtom){ state._panelAtom=ci; renderAtomPanel(); drawLewis(); }
+  requestAnimationFrame(loop);
+}
+state.zoomFocus=-1;
+function zoomBy(f,sx,sy){
+  const m=state.mol; if(!m) return; const old=state.zoom; let nz=Math.max(state.baseZoom*0.15,Math.min(state.baseZoom*20000,old*f)); if(nz>3e6) nz=3e6;
+  state.anim=null;
+  if(state.atomLock>=0&&state.atomLock<m.atoms.length){ // i atomvisningen zoomes der om atomet, inden for et fornuftigt område
+    const a=m.atoms[state.atomLock]; const cr=cloudRadius(a.Z), minD=Math.min(W,H); const v=getAtomViz(a.Z,m.atoms.length===1?a.charge:0);
+    const zMax=0.45*minD/v.nucR; const zMin=0.14*minD/cr;
+    if(f<1&&state.zoom<=zMin*1.001){ state.outPush=(state.outPush||0)+1; if(state.outPush>=3&&m.atoms.length>1){ state.outPush=0; exitAtom(true); } return; }
+    state.outPush=0; state.zoom=Math.max(zMin,Math.min(zMax,nz)); return; }
+  if(f>1&&sx!==undefined){
+    // find atom nærmest markøren; når vi nærmer os atomvisning, centrér det
+    let best=-1,bd=1e9; m.atoms.forEach((a,i)=>{ const p=proj(m.pos[i]); const d=Math.hypot(p.x-sx,p.y-sy)-ballR(a)*old; if(d<bd){bd=d;best=i;} });
+    const near=best>=0&&(bd<40||old*cloudRadius(m.atoms[best].Z)/Math.min(W,H)>0.05);
+    if(near&&nz>state.baseZoom*1.3){ if(state.zoomFocus!==best){ state.zoomFocus=best; state.focus=best; } }
+    else { const dx=(sx-W/2)/old, dy=-(sy-H/2)/old; const w=viewToWorld([dx,dy,0]); state.target=V.add(state.target,V.mul(w,1-old/nz)); }
+  } else if(f<1){
+    if(nz<state.baseZoom*1.6){ state.zoomFocus=-1; if(state.focus>=0&&state.mol.atoms.length>1){ state.focus=-1; renderAtomPanel(); } state.target=V.mul(state.target,0.9); }
+  }
+  state.zoom=nz;
+}
+let dragging=false, dragMode='rot', lastX=0,lastY=0, downX=0, downY=0, moved=false; const pointers=new Map(); let pinch=null;
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+cv.addEventListener('pointerdown',e=>{
+  cv.setPointerCapture(e.pointerId); pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size===2){ const p=[...pointers.values()]; pinch={d:Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y),cx:(p[0].x+p[1].x)/2,cy:(p[0].y+p[1].y)/2}; dragging=false; return; }
+  dragging=true; moved=false; lastX=downX=e.clientX; lastY=downY=e.clientY;
+  dragMode=(e.button===2||e.shiftKey)?'rotz':(e.ctrlKey||e.metaKey||e.button===1)?'pan':'rot'; cv.classList.add('drag');
+});
+cv.addEventListener('pointermove',e=>{
+  if(!pointers.has(e.pointerId)) return; pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(pointers.size===2&&pinch){ const p=[...pointers.values()]; const d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y); const cx=(p[0].x+p[1].x)/2, cy=(p[0].y+p[1].y)/2;
+    const r=cv.getBoundingClientRect(); zoomBy(d/pinch.d,cx-r.left,cy-r.top);
+    const dx=(cx-pinch.cx)/state.zoom, dy=-(cy-pinch.cy)/state.zoom; state.target=V.sub(state.target,viewToWorld([dx,dy,0]));
+    pinch={d,cx,cy}; return; }
+  if(!dragging) return; const dx=e.clientX-lastX, dy=e.clientY-lastY; lastX=e.clientX; lastY=e.clientY;
+  if(Math.hypot(e.clientX-downX,e.clientY-downY)>4) moved=true;
+  if(dragMode==='rot'){ rotateView('y',dx*0.01); rotateView('x',dy*0.01); }
+  else if(dragMode==='rotz'){ rotateView('z',-dx*0.01); }
+  else { state.zoomFocus=-1; const w=viewToWorld([dx/state.zoom,-dy/state.zoom,0]); state.target=V.sub(state.target,w); }
+});
+const endPtr=e=>{ pointers.delete(e.pointerId); if(pointers.size<2) pinch=null;
+  if(dragging&&!moved&&pointers.size===0){ pickAt(e.clientX,e.clientY,false); }
+  if(pointers.size===0){ dragging=false; cv.classList.remove('drag'); } };
+cv.addEventListener('pointerup',endPtr); cv.addEventListener('pointercancel',endPtr);
+cv.addEventListener('dblclick',e=>{ const i=pickAt(e.clientX,e.clientY,true); if(i>=0){ state.zoomFocus=i; flyToAtom(i,0.34);} });
+cv.addEventListener('wheel',e=>{ e.preventDefault(); const r=cv.getBoundingClientRect(); const d=e.deltaMode===1?e.deltaY*30:e.deltaY; zoomBy(Math.exp(-Math.max(-250,Math.min(250,d))*0.0011),e.clientX-r.left,e.clientY-r.top); },{passive:false});
+function pickAt(cx,cy,quiet){
+  const m=state.mol; if(!m) return -1; const r=cv.getBoundingClientRect(); const x=cx-r.left, y=cy-r.top;
+  let best=-1,bz=-1e9; m.atoms.forEach((a,i)=>{ const p=proj(m.pos[i]); const rr=Math.max(8,ballR(a)*state.zoom); if(Math.hypot(p.x-x,p.y-y)<rr&&p.z>bz){bz=p.z;best=i;} });
+  if(state.orbAlpha>0.5) return state.orbIdx;
+  if(!quiet){ state.sel=best===state.sel?-1:best; if(state.sel<0){ state.focus=-1; } else state.focus=-1; renderAtomPanel(true); drawLewis(); }
+  return best;
+}
+window.addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  const a=0.12;
+  if(e.key==='ArrowLeft') rotateView('y',-a); else if(e.key==='ArrowRight') rotateView('y',a);
+  else if(e.key==='ArrowUp') rotateView('x',-a); else if(e.key==='ArrowDown') rotateView('x',a);
+  else if(e.key==='q'||e.key==='Q') rotateView('z',a); else if(e.key==='e'||e.key==='E') rotateView('z',-a);
+  else if(e.key==='+'||e.key==='=') zoomBy(1.25,W/2,H/2); else if(e.key==='-') zoomBy(0.8,W/2,H/2);
+  else if(e.key==='0'){ state.atomLock=-1; state.zoomFocus=-1; resetView(); renderAtomPanel(); }
+  else if(e.key==='Escape'){ exitAtom(true); } else return;
+  e.preventDefault();
+});
+document.querySelectorAll('[data-rot]').forEach(b=>b.addEventListener('click',()=>{ const [ax,s]=b.dataset.rot.split(','); rotateView(ax,(+s)*Math.PI/12); }));
+$('zIn').onclick=()=>zoomBy(1.5,W/2,H/2); $('zOut').onclick=()=>zoomBy(1/1.5,W/2,H/2);
+$('zReset').onclick=()=>{ state.atomLock=-1; state.zoomFocus=-1; state.sel=-1; resetView(); renderAtomPanel(); drawLewis(); };
+function pickDefaultAtom(){ const m=state.mol; if(!m) return -1; if(state.sel>=0) return state.sel; let b=0; m.atoms.forEach((a,i)=>{ if(a.nb.length>m.atoms[b].nb.length) b=i; }); return b; }
+$('zAtom').onclick=()=>{ const i=pickDefaultAtom(); if(i>=0){ state.zoomFocus=i; flyToAtom(i,0.34);} };
+$('zNuc').onclick=()=>{ const i=pickDefaultAtom(); if(i<0) return; const m=state.mol; const a=m.atoms[i]; const v=getAtomViz(a.Z,m.atoms.length===1?a.charge:0); state.zoomFocus=i; state.sel=i; state.focus=i;
+  state.anim={t0:performance.now(),dur:1400,fromT:state.target.slice(),toT:m.pos[i].slice(),fromZ:state.zoom,toZ:Math.min(W,H)*0.28/v.nucR}; renderAtomPanel(true); };
+
+/* --- atom-værktøjslinje */
+$('atomBar').addEventListener('click',e=>{
+  const v=activeViz(); if(!v) return; const b=e.target.closest('button'); if(!b) return;
+  if(b.dataset.am){ state.atomMode=b.dataset.am;
+    if(state.atomMode==='cloud'&&v.solo<0){ let k=v.orbs.findIndex((o,i)=>v.visible.has(i)&&o.l>0&&o.valence); if(k<0) k=v.orbs.findIndex((o,i)=>v.visible.has(i)); if(k>=0) v.solo=k; } }
+  else if(b.dataset.af){ applyFilter(v,b.dataset.af); }
+  else if(b.id==='backMol'){ exitAtom(true); return; }
+  else if(b.id==='ovBtn'||b.id==='nucBtn'){ const m=state.mol, i=state.atomLock; if(!m||i<0) return; const minD=Math.min(W,H);
+    const z=b.id==='ovBtn'?0.36*minD/cloudRadius(m.atoms[i].Z):0.3*minD/v.nucR;
+    state.anim={t0:performance.now(),dur:b.id==='ovBtn'?700:1200,fromT:state.target.slice(),toT:m.pos[i].slice(),fromZ:state.zoom,toZ:z}; return; }
+  else if(b.id==='prevOrb'||b.id==='nextOrb'){ const n=v.orbs.length; let k=v.solo; if(k<0) k=b.id==='nextOrb'?-1:n; k+=b.id==='nextOrb'?1:-1; if(k>=n||k<0) v.solo=-1; else v.solo=k; }
+  renderAtomPanel(true);
+});
+/* --- indstillinger */
+function readOpts(){ const o=state.opts; o.style=$('style').value; o.angles=$('oAngles').checked; o.lengths=$('oLengths').checked; o.lp=$('oLP').checked; o.labels=$('oLabels').checked; o.axes=$('oAxes').checked; o.orbLabels=$('oOrbLabels').checked; o.electrons=$('oElectrons').checked; o.orbColor=$('orbColor').value; }
+['style','oAngles','oLengths','oLP','oLabels','oAxes','oOrbLabels','oElectrons','orbColor'].forEach(id=>$(id).addEventListener('change',readOpts));
+['X','Y','Z'].forEach((ax,k)=>{ const s=$('ar'+ax); s.addEventListener('input',()=>{ state.ar[k]=+s.value; $('ar'+ax+'v').textContent=s.value; }); });
+$('stopRot').onclick=()=>{ ['X','Y','Z'].forEach((ax,k)=>{ $('ar'+ax).value=0; $('ar'+ax+'v').textContent='0'; state.ar[k]=0; }); };
+$('go').onclick=loadInput; $('inp').addEventListener('keydown',e=>{ if(e.key==='Enter') loadInput(); });
+
+/* --- eksempler */
+const EXAMPLES=['H2O','CO2','NH3','CH4','BF3','PCl5','SF6','XeF4','ClF3','SF4','IF5','XeF2','I3-','SO4 2-','NO3-','NH4+','O3','NO2','HCN','C2H2','C2H4','benzen','ethanol','eddikesyre','glukose','koffein','aspirin','P4','H2SO4','Fe','U','Ca2+'];
+$('chips').innerHTML=EXAMPLES.map(x=>'<span class="chip">'+x+'</span>').join('');
+$('chips').addEventListener('click',e=>{ const c=e.target.closest('.chip'); if(!c) return; $('inp').value=c.textContent; $('mode').value='auto'; loadInput(); });
+
+initDict();
+$('dl').innerHTML=DICT_LIST.map(e=>'<option value="'+esc(e.da.replace(/\s*\(.*\)/,''))+'">').join('');
+readOpts();
+resize();
+loadInput();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
